@@ -1,0 +1,19 @@
+{
+  "name": "research-observe",
+  "version": "0.1.0",
+  "description": "Collects and synthesizes latest research and engineering practices in LLM/AI Agent observability, focusing on OTel GenAI semantic conventions, academic research, and open-source tooling",
+  "author": {
+    "name": "Wendy Ma"
+  },
+  "license": "MIT",
+  "keywords": [
+    "observability",
+    "opentelemetry",
+    "genai",
+    "llm",
+    "agent",
+    "tracing",
+    "monitoring",
+    "research"
+  ]
+}
