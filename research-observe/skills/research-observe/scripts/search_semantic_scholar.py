@@ -12,6 +12,15 @@ import requests
 S2_API = "https://api.semanticscholar.org/graph/v1/paper/search"
 S2_FIELDS = "title,authors,abstract,url,publicationDate,citationCount"
 
+TOPIC_TERMS = {
+    "tracing": ['"agent trace"', '"distributed tracing" LLM', '"span model" LLM'],
+    "eval": ['"LLM evaluation"', '"agent evaluation"', '"LLM-as-judge"'],
+    "safety": ['"AI alignment" observability', '"safety monitoring" LLM', '"jailbreak detection"', '"safety guardrail"'],
+    "cost": ['"token cost" attribution', '"LLM billing"', '"cost per task"'],
+    "architecture": ['"agent DAG"', '"multi-agent" observability', '"tool call" telemetry', '"multi-agent contamination"'],
+    "observability": ['"LLM observability"', '"agent tracing"', '"AI monitoring"', '"model observability"', '"data provenance" LLM', '"agent monitoring"'],
+}
+
 
 def search_semantic_scholar(query: str, limit: int, year_from: str, retries: int = 2) -> list[dict]:
     api_key = os.environ.get("SEMANTIC_SCHOLAR_API_KEY", "")
@@ -73,15 +82,14 @@ def main():
     limit = 5 if args.deep else 15
     year_from = args.since[:4] if args.since else ""
 
-    # Build query with observability context
-    query = args.topic
-    broader_terms = ["LLM observability", "agent tracing", "AI monitoring", "model observability"]
-    if args.topic.lower() not in ("observability", "monitoring"):
+    if args.topic in TOPIC_TERMS:
+        terms = TOPIC_TERMS[args.topic]
+        query = " OR ".join(terms)
+    else:
         query = f'{args.topic} ("observability" OR "monitoring" OR "tracing" OR "evaluation")'
 
     results = search_semantic_scholar(query, limit, year_from)
 
-    # Trim abstracts for non-deep mode
     if not args.deep:
         for r in results:
             if isinstance(r, dict) and "error" not in r:
