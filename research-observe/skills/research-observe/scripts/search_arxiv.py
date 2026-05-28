@@ -19,24 +19,27 @@ CATEGORY_FILTER = "(cat:cs.AI OR cat:cs.CL OR cat:cs.SE)"
 TOPIC_TERMS = {
     "tracing": ['"agent trace"', '"distributed tracing" LLM', '"span model" LLM'],
     "eval": ['"LLM evaluation"', '"agent evaluation"', '"LLM-as-judge"'],
-    "safety": ['"AI alignment" observability', '"safety monitoring" LLM', '"jailbreak detection"'],
+    "safety": ['"AI alignment" observability', '"safety monitoring" LLM', '"jailbreak detection"', '"safety guardrail"'],
     "cost": ['"token cost" attribution', '"LLM billing"', '"cost per task"'],
-    "architecture": ['"agent DAG"', '"multi-agent" observability', '"tool call" telemetry'],
-    "observability": ['"LLM observability"', '"agent tracing"', '"AI monitoring"', '"model observability"'],
+    "architecture": ['"agent DAG"', '"multi-agent" observability', '"tool call" telemetry', '"multi-agent contamination"'],
+    "observability": ['"LLM observability"', '"agent tracing"', '"AI monitoring"', '"model observability"', '"data provenance" LLM', '"agent monitoring"'],
 }
 
 
-def build_query(topic: str) -> str:
+def build_query(topic: str, venues: list[str] | None = None) -> str:
     if topic in TOPIC_TERMS:
         terms = TOPIC_TERMS[topic]
     else:
         terms = [f'"{topic}"']
-        # Add observability context if topic is narrow
-        if topic not in ("observability", "monitoring"):
-            terms = [f'{t} OR "LLM {topic}"' for t in terms]
 
     query_parts = " OR ".join(f"ti:{t}" for t in terms)
-    return f"({query_parts}) AND {CATEGORY_FILTER}"
+    query = f"({query_parts}) AND {CATEGORY_FILTER}"
+
+    if venues:
+        venue_terms = " OR ".join(f'all:"{v}"' for v in venues)
+        query = f"({query}) AND ({venue_terms})"
+
+    return query
 
 
 def search_arxiv(query: str, max_results: int, retries: int = 2) -> list[dict]:
@@ -123,21 +126,21 @@ def main():
     parser.add_argument("--topic", required=True, help="Search topic")
     parser.add_argument("--since", required=True, help="Date filter (YYYY-MM-DD)")
     parser.add_argument("--deep", action="store_true", help="Fewer results with full abstracts")
+    parser.add_argument("--venues", nargs="*", default=None,
+                        help="Filter by venue name (e.g., AAAI NeurIPS ICML EMNLP)")
     args = parser.parse_args()
 
     max_results = 5 if args.deep else 15
-    query = build_query(args.topic)
+    query = build_query(args.topic, args.venues)
 
     results = search_arxiv(query, max_results)
 
-    # Filter by date
     since_date = args.since
     if since_date:
         filtered = []
         for r in results:
             if isinstance(r, dict) and "error" not in r:
                 if r.get("published", "") >= since_date:
-                    # Trim summary for non-deep mode
                     if not args.deep and len(r.get("summary", "")) > 200:
                         r["summary"] = r["summary"][:197] + "..."
                     filtered.append(r)
