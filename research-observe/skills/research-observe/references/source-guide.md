@@ -1,22 +1,47 @@
 # Source Guide
 
-API endpoints, rate limits, and monitored repositories.
+API endpoints, rate limits, and monitored repositories for research-observe v2.
 
-## GitHub Repositories (Monitored by fetch_otel_updates.py)
+## GitHub Repositories
+
+### OTel GenAI SIG (fetch_otel_updates.py)
 
 | Repository | Focus |
 |-----------|-------|
 | `open-telemetry/semantic-conventions` | GenAI span/metric/attribute definitions |
-| `open-telemetry/opentelemetry-python` | Python SDK + instrumentations (bedrock, openai, etc.) |
+| `open-telemetry/opentelemetry-python` | Python SDK + instrumentations |
 | `open-telemetry/opentelemetry-js` | JS SDK + instrumentations |
 | `open-telemetry/opentelemetry-go` | Go SDK + instrumentations |
-| `open-telemetry/community` | GenAI SIG meeting notes, governance, OTEPs |
+| `open-telemetry/community` | GenAI SIG meeting notes, governance |
 
-## GenAI SIG Meeting Notes
+### OpenInference WG (fetch_openinference_updates.py)
 
-Location in community repo: `sig/gen-ai/meetings/` (path may vary).
+| Repository | Focus |
+|-----------|-------|
+| `Arize-AI/openinference` | Core OpenInference spec and Python SDK |
+| `Arize-AI/phoenix` | AI observability platform (releases tracked separately) |
 
-Fallback: Search issues with label `gen-ai` in the community repo, or check the SIG's README for a meeting notes link.
+### AI-Native Tool Releases (fetch_tool_releases.py)
+
+| Tool | GitHub Repository |
+|------|------------------|
+| LangFuse | `langfuse/langfuse` |
+| Arize Phoenix | `Arize-AI/phoenix` |
+| Helicone | `Helicone/helicone` |
+| OpenLIT | `openlit/openlit` |
+| Traceloop/OpenLLMetry | `traceloop/openllmetry` |
+
+## GitHub API
+
+- Endpoint: `https://api.github.com`
+- Rate limit (unauthenticated): 60 requests/hour
+- Rate limit (authenticated): 5,000 requests/hour
+- Set env var `GITHUB_TOKEN` for higher limits
+- Key endpoints used:
+  - `GET /repos/{owner}/{repo}/pulls` — PR listing
+  - `GET /repos/{owner}/{repo}/issues` — Issue listing
+  - `GET /repos/{owner}/{repo}/releases` — Release listing
+  - `GET /repos/{owner}/{repo}/contents/{path}` — File content lookup
 
 ## arXiv API
 
@@ -29,91 +54,62 @@ Fallback: Search issues with label `gen-ai` in the community repo, or check the 
 ## Semantic Scholar API
 
 - Endpoint: `https://api.semanticscholar.org/graph/v1/paper/search`
-- Rate limit (unauthenticated): ~1 request/second (100 requests/5 minutes)
+- Rate limit (unauthenticated): ~1 request/second
 - Rate limit (authenticated): ~10 requests/second
 - Set env var `SEMANTIC_SCHOLAR_API_KEY` for higher limits
 - Response format: JSON
 - Fields: `title,authors,abstract,url,publicationDate,citationCount`
 
-## GitHub API
+## Combined Results JSON Schema (v2)
 
-- Endpoint: `https://api.github.com`
-- Rate limit (unauthenticated): 60 requests/hour
-- Rate limit (authenticated): 5,000 requests/hour
-- Set env var `GITHUB_TOKEN` for higher limits
-- Response format: JSON
-- Key endpoints used:
-  - `GET /repos/{owner}/{repo}/pulls` — open PRs
-  - `GET /repos/{owner}/{repo}/issues` — open issues
-  - `GET /repos/{owner}/{repo}/contents/{path}` — file content (SIG notes)
-
-## Combined Results JSON Schema
-
-The `generate_report.py` script expects this schema:
+`generate_report.py` expects this schema:
 
 ```json
 {
-  "otel": {
-    "prs": [
-      {
-        "repo": "string",
-        "number": "int",
-        "title": "string",
-        "state": "string",
-        "updated_at": "ISO 8601",
-        "url": "string",
-        "labels": ["string"]
-      }
-    ],
-    "issues": [
-      {
-        "repo": "string",
-        "number": "int",
-        "title": "string",
-        "state": "string",
-        "updated_at": "ISO 8601",
-        "url": "string",
-        "labels": ["string"]
-      }
-    ],
-    "sig_notes_url": "string or null"
+  "date": "YYYY-MM-DD",
+  "since": "YYYY-MM-DD",
+  "topic": "string",
+  "newsletters": [
+    {"source": "string", "title": "string", "summary": "string", "url": "string"}
+  ],
+  "domestic": [
+    {"source": "string", "title": "string", "summary": "string", "url": "string"}
+  ],
+  "papers": [
+    {"title": "string", "authors": ["string"], "summary": "string", "keywords": ["string"], "published": "YYYY-MM-DD", "url": "string", "citationCount": 0, "source": "arxiv|semantic_scholar|twitter"}
+  ],
+  "standards": {
+    "otel": {
+      "prs": [
+        {"repo": "string", "number": 0, "title": "string", "state": "string", "updated_at": "ISO 8601", "url": "string", "labels": ["string"]}
+      ],
+      "issues": [
+        {"repo": "string", "number": 0, "title": "string", "state": "string", "updated_at": "ISO 8601", "url": "string", "labels": ["string"]}
+      ],
+      "sig_notes_url": "string or null"
+    },
+    "openinference": {
+      "prs": [
+        {"repo": "string", "number": 0, "title": "string", "state": "string", "updated_at": "ISO 8601", "url": "string", "labels": ["string"]}
+      ],
+      "issues": [
+        {"repo": "string", "number": 0, "title": "string", "state": "string", "updated_at": "ISO 8601", "url": "string", "labels": ["string"]}
+      ]
+    },
+    "cncf": [
+      {"title": "string", "summary": "string", "url": "string"}
+    ]
   },
-  "arxiv": [
-    {
-      "title": "string",
-      "authors": ["string"],
-      "summary": "string",
-      "keywords": ["string"],
-      "published": "YYYY-MM-DD",
-      "url": "string"
-    }
+  "enterprise_blogs": [
+    {"source": "string", "title": "string", "significance": "string", "url": "string"}
   ],
-  "semantic_scholar": [
-    {
-      "title": "string",
-      "authors": ["string"],
-      "summary": "string",
-      "keywords": ["string"],
-      "published": "YYYY-MM-DD",
-      "url": "string",
-      "citationCount": "int"
-    }
-  ],
-  "tools": [
-    {
-      "name": "string",
-      "change": "string",
-      "stars": "int or null",
-      "url": "string"
-    }
-  ],
-  "engineering": [
-    {
-      "title": "string",
-      "source": "string",
-      "takeaway": "string",
-      "url": "string"
-    }
-  ]
+  "tools": {
+    "ai_native": [
+      {"name": "string", "version": "string", "change": "string", "published": "YYYY-MM-DD", "url": "string"}
+    ],
+    "traditional": [
+      {"name": "string", "title": "string", "change": "string", "url": "string"}
+    ]
+  }
 }
 ```
