@@ -2,11 +2,5 @@
   "name": "good-skills",
   "owner": {
     "name": "Wendy Ma"
-  },
-  "plugins": [
-    {
-      "name": "research-observe",
-      "source": "./research-observe"
-    }
-  ]
+  }
 }

@@ -101,7 +101,8 @@ def main():
         releases = fetch_releases(repo, since, token)
         all_releases.extend(releases)
 
-    print(json.dumps(all_releases, indent=2, ensure_ascii=False))
+    sys.stdout.buffer.write(json.dumps(all_releases, indent=2, ensure_ascii=False).encode("utf-8"))
+    sys.stdout.buffer.write(b"\n")
 
 
 if __name__ == "__main__":

@@ -36,38 +36,22 @@ claude plugin install good-skills
 
 Or install from local directory:
 ```bash
-claude plugin install --path d:/opensource/github/good-skills
+claude plugin install --path ./good-skills
 ```
 
 ### Codex CLI
 
-Codex CLI reads `AGENTS.md` as project-level instructions. The included `AGENTS.md` describes all available skills.
+Codex CLI does not have a plugin system. Use `AGENTS.md` (included in this repo) as project-level instructions.
 
 ### OpenCode
 
 See [.opencode/INSTALL.md](.opencode/INSTALL.md) for detailed instructions.
 
-Quick setup — add to `opencode.json`:
+Quick setup:
 ```json
 {
   "plugin": ["good-skills@git+https://github.com/Wendymayu/good-skills.git"]
 }
-```
-
-## Usage Examples
-
-```
-/good-skills:research-observe                        # Full landscape scan (last 30 days)
-/good-skills:research-observe tracing                # Focus on agent tracing
-/good-skills:research-observe eval --since 2026-05-01 # Eval topic, since May 1
-/good-skills:research-observe safety --deep          # Detailed analysis on safety
-```
-
-### Periodic Scanning
-
-Pair with `/loop` for automated weekly scans:
-```
-/loop 168h /good-skills:research-observe --since $(date -d '7 days ago' +%Y-%m-%d)
 ```
 
 ## Project Structure
@@ -85,11 +69,11 @@ good-skills/
 ├── docs/                               ← Specs, plans, design docs
 └── skills/
 │   └── research-observe/
-│       ├── SKILL.md
+│       ├── SKILL.md                    ← Skill definition (orchestration)
 │       ├── references/
-│       │   ├── search-strategies.md
-│       │   ├── source-guide.md
-│       │   └── report-template.md
+│       │   ├── search-strategies.md    ← WebSearch query templates
+│       │   ├── source-guide.md         ← API endpoints, repos, rate limits
+│       │   └── report-template.md      ← Report markdown skeleton
 │       └── scripts/
 │           ├── search_arxiv.py
 │           ├── search_semantic_scholar.py
@@ -101,7 +85,7 @@ good-skills/
 
 ## Adding a New Skill
 
-1. Create `skills/<skill-name>/SKILL.md` with YAML frontmatter
+1. Create `skills/<skill-name>/SKILL.md` with YAML frontmatter (name, description, allowed-tools, argument-hint)
 2. Add supporting files (references/, scripts/) as needed
 3. Update `AGENTS.md` with a brief description of the new skill
 4. Update this README with the new skill entry

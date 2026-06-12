@@ -1,0 +1,43 @@
+{
+  "name": "good-skills",
+  "version": "0.2.0",
+  "description": "A collection of practical skills for coding agents: research observability intelligence, and more to come.",
+  "author": {
+    "name": "Wendy Ma",
+    "url": "https://github.com/Wendymayu"
+  },
+  "homepage": "https://github.com/Wendymayu/good-skills",
+  "repository": "https://github.com/Wendymayu/good-skills",
+  "license": "MIT",
+  "keywords": [
+    "observability",
+    "opentelemetry",
+    "genai",
+    "llm",
+    "agent",
+    "tracing",
+    "monitoring",
+    "research",
+    "skills"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Good Skills",
+    "shortDescription": "Practical skills for coding agents: research, observability, and more",
+    "longDescription": "Use Good Skills to research LLM/AI agent observability developments, scan academic papers, track open-source tool releases, and generate structured intelligence reports. More skills coming soon.",
+    "developerName": "Wendy Ma",
+    "category": "Research",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Research the latest in LLM observability",
+      "Scan AI agent monitoring developments"
+    ],
+    "websiteURL": "https://github.com/Wendymayu/good-skills",
+    "privacyPolicyURL": "https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement",
+    "termsOfServiceURL": "https://docs.github.com/en/site-policy/github-terms/github-terms-of-service"
+  }
+}

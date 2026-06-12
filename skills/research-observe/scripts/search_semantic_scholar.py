@@ -96,7 +96,8 @@ def main():
                 if len(r.get("summary", "")) > 200:
                     r["summary"] = r["summary"][:197] + "..."
 
-    print(json.dumps(results, indent=2, ensure_ascii=False))
+    sys.stdout.buffer.write(json.dumps(results, indent=2, ensure_ascii=False).encode("utf-8"))
+    sys.stdout.buffer.write(b"\n")
 
 
 if __name__ == "__main__":

@@ -148,7 +148,8 @@ def main():
                 filtered.append(r)
         results = filtered
 
-    print(json.dumps(results, indent=2, ensure_ascii=False))
+    sys.stdout.buffer.write(json.dumps(results, indent=2, ensure_ascii=False).encode("utf-8"))
+    sys.stdout.buffer.write(b"\n")
 
 
 if __name__ == "__main__":

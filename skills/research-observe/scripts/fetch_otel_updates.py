@@ -161,7 +161,8 @@ def main():
         "sig_notes_url": sig_url,
     }
 
-    print(json.dumps(output, indent=2, ensure_ascii=False))
+    sys.stdout.buffer.write(json.dumps(output, indent=2, ensure_ascii=False).encode("utf-8"))
+    sys.stdout.buffer.write(b"\n")
 
 
 if __name__ == "__main__":

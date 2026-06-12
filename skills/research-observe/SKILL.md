@@ -141,6 +141,10 @@ Then WebSearch for tools without structured GitHub releases:
 
 Record traditional tool items as `{name, title, change, url}`.
 
+### Error Resilience
+
+Each data source fails independently don't halt the workflow. If a script outputs `{"error": "..."}` entries, exclude them from the final report. If WebSearch returns no results or WebFetch fails for a source, skip it and continue. If an entire plate yields no usable data, render it as "本期无更新" in Chinese. Never retry a failed source more than once.
+
 ### Step 8: Aggregate and Generate Report
 
 1. Combine all collected data into a single JSON structure matching the schema in `references/source-guide.md`:
@@ -205,5 +209,5 @@ python "${CLAUDE_PLUGIN_ROOT}/skills/research-observe/scripts/generate_report.py
 
 Pair with `/loop` for periodic landscape scanning:
 ```
-/loop 168h /research-observe --since $(date -d '7 days ago' +%%Y-%%m-%%d)
+/loop 168h /good-skills:research-observe --since $(date -d '7 days ago' +%%Y-%%m-%%d)
 ```
