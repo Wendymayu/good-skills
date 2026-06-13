@@ -1,0 +1,97 @@
+{
+  "date": "2026-06-13",
+  "since": "2026-05-13",
+  "topic": "LLM与AI Agent可观测性",
+  "newsletters": [
+    {"source": "Latent Space", "title": "LLM Observability: Tracing, Logging, and Monitoring AI Agents", "summary": "深度讨论LLM可观测性领域的新进展，覆盖多步Agent工作流的追踪技术、LLM调用日志、Agent行为监控。重点介绍LangSmith、Arize Phoenix及基于OpenTelemetry的Agent链路追踪方案。", "url": "https://latent.space"},
+    {"source": "Latent Space", "title": "The State of AI Agents — with Swyx & Aman", "summary": "讨论AI Agent当前格局，包括可观测性、调试、追踪Agent决策过程等挑战。指出\"Agent可观测性\"是领域内尚未解决的关键问题之一。", "url": "https://latent.space"},
+    {"source": "Latent Space", "title": "AI Engineer Summit: Observability & Evaluation Track", "summary": "AI工程师峰会可观测性专场报道，涵盖Agent工作流追踪、Agent输出评估、构建生产级Agent监控管道等议题。", "url": "https://latent.space"},
+    {"source": "The Batch (deeplearning.ai)", "title": "AI Safety & Monitoring Coverage", "summary": "Andrew Ng的The Batch周刊持续关注AI安全监控话题，包括模型可解释性研究、红队测试、危险能力评估框架等。重点报道Anthropic的RSP政策和OpenAI的Preparedness Framework。", "url": "https://deeplearning.ai/the-batch"},
+    {"source": "LangChain", "title": "LLM Observability: The Complete Guide for 2025", "summary": "LangChain发布LLM可观测性完整指南，覆盖追踪、评估、监控基础概念，讨论LLM可观测性与传统软件监控的区别，以及新兴工具和框架。", "url": "https://www.langchain.com/blog/llm-observability-guide-2025"},
+    {"source": "Arize AI", "title": "The State of LLM Observability Newsletter", "summary": "Arize发布季度可观测性通讯，涵盖LLM评估指标、Agent追踪、漂移检测，并发布2026路线图预览。Phoenix开源平台持续迭代。", "url": "https://arize.com/blog/llm-observability-state-2025"},
+    {"source": "OpenTelemetry", "title": "OpenTelemetry for LLMs: Emerging Semantic Conventions 2025", "summary": "OTel官方博客介绍正在制定的LLM语义约定，包括gen_ai.system、gen_ai.request.model等span属性，推动LLM instrumentation标准化。", "url": "https://opentelemetry.io/blog/2025/llm-semantic-conventions/"},
+    {"source": "Helicone", "title": "LLM Observability in 2025", "summary": "Helicone开源LLM可观测性平台概览，覆盖日志、成本追踪、Prompt版本管理、Agent工作流可视化。含2025-2026领域预测。", "url": "https://helicone.ai/blog/llm-observability-2025"}
+  ],
+  "domestic": [
+    {"source": "InfoQ中文站", "title": "LLM可观测性与AI Agent监控相关技术报道", "summary": "InfoQ中文站近期关注OpenLLMetry/OpenTelemetry在LLM应用中的标准化可观测性推进，LangChain/LangSmith Agent工作流追踪实践，以及国内企业的可观测性平台落地案例。", "url": "https://infoq.cn"},
+    {"source": "量子位", "title": "LLM可观测性相关报道", "summary": "量子位持续关注LLM监控和Agent行为追踪领域的最新进展和工具动态。", "url": "https://qbitai.com"}
+  ],
+  "papers": [
+    {"title": "Operadic consistency: a label-free signal for compositional reasoning failures in LLMs", "authors": ["Nathaniel Bottman", "Yinhong Liu", "Kyle Richardson"], "summary": "提出无需标签即可在推理时检测LLM推理失败的新方法，基于operadic一致性理论，超越自一致性、语义熵等基线方法。", "keywords": ["cs.CL", "cs.LG"], "published": "2026-06-11", "url": "http://arxiv.org/abs/2606.13649v1", "source": "arxiv", "citationCount": 0},
+    {"title": "HyperTool: Beyond Step-Wise Tool Calls for Tool-Augmented Agents", "authors": ["Yaxin Du", "Yifan Zhou", "Yujie Ge", "Jiajun Wang", "Xianghe Pang", "Shuo Tang", "Tuney Zheng", "Bryan Dai", "Jian Yang", "Siheng Chen"], "summary": "提出超越逐步原子工具调用的新范式——HyperTool，允许Agent批量调用工具减少执行瓶颈，直接关联Agent可观测性中工具调用链路的追踪设计。", "keywords": ["cs.CL"], "published": "2026-06-11", "url": "http://arxiv.org/abs/2606.13663v1", "source": "arxiv", "citationCount": 0},
+    {"title": "EvoArena: Tracking Memory Evolution for Robust LLM Agents in Dynamic Environments", "authors": ["Jundong Xu", "Qingchuan Li", "Jiaying Wu", "Yihuai Lan", "Shuyue Stella Li", "Huichi Zhou", "Bowen Jiang", "Lei Wang", "Jun Wang", "Anh Tuan Luu", "Caiming Xiong", "Hae Won Park", "Bryan Hooi", "Zhiyuan Hu"], "summary": "关注LLM Agent在动态环境中的记忆演化追踪，与Agent可观测性中会话级追踪和状态监控直接相关。", "keywords": ["cs.CL"], "published": "2026-06-11", "url": "http://arxiv.org/abs/2606.13681v1", "source": "arxiv", "citationCount": 0},
+    {"title": "Reward Modeling for Multi-Agent Orchestration", "authors": ["King Yeung Tsang", "Zihao Zhao", "Vishal Venkataramani", "Haizhou Shi", "Zixuan Ke", "Semih Yavuz", "Shafiq Joty", "Hao Wang"], "summary": "研究多Agent编排的奖励建模，为多Agent系统的可观测性评估（任务完成率、协调效率）提供训练信号基础。", "keywords": ["cs.AI", "cs.CL", "cs.LG", "cs.MA"], "published": "2026-06-11", "url": "http://arxiv.org/abs/2606.13598v1", "source": "arxiv", "citationCount": 0},
+    {"title": "AgentBeats: Agentifying Agent Assessment for Openness, Standardization, and Reproducibility", "authors": ["Xiaoyuan Liu et al."], "summary": "提出Agent评估的新框架AgentBeats，解决当前基准测试依赖固定LLM harness、测试与产品耦合等问题。强调标准化和可复现性——这些正是Agent可观测性评估的基础要求。", "keywords": ["cs.AI", "cs.LG"], "published": "2026-06-11", "url": "http://arxiv.org/abs/2606.13608v1", "source": "arxiv", "citationCount": 0}
+  ],
+  "standards": {
+    "otel": {
+      "prs": [
+        {"repo": "open-telemetry/semantic-conventions", "number": 2528, "title": "New attributes in execute-tool and llm span for Single and Multi-Agent traceability", "state": "closed", "updated_at": "2026-06-11T18:57:09Z", "url": "https://github.com/open-telemetry/semantic-conventions/pull/2528", "labels": ["enhancement", "area:gen-ai"]},
+        {"repo": "open-telemetry/semantic-conventions", "number": 2294, "title": "New convention: raid", "state": "closed", "updated_at": "2026-06-11T18:57:09Z", "url": "https://github.com/open-telemetry/semantic-conventions/pull/2294", "labels": ["area:system"]},
+        {"repo": "open-telemetry/opentelemetry-python", "number": 5295, "title": "Update log, metrics and trace exporters to return response code", "state": "closed", "updated_at": "2026-06-12T16:08:20Z", "url": "https://github.com/open-telemetry/opentelemetry-python/pull/5295", "labels": []},
+        {"repo": "open-telemetry/opentelemetry-js", "number": 6751, "title": "fix(otlp-exporter-base): surface FetchTransport timeout as clean failure", "state": "open", "updated_at": "2026-06-12T19:15:30Z", "url": "https://github.com/open-telemetry/opentelemetry-js/pull/6751", "labels": []}
+      ],
+      "issues": [
+        {"repo": "open-telemetry/community", "number": 3467, "title": "[Donation Proposal]: Arize OpenInference code grant", "state": "open", "updated_at": "2026-06-11T02:34:55Z", "url": "https://github.com/open-telemetry/community/issues/3467", "labels": ["area/donation"]},
+        {"repo": "open-telemetry/community", "number": 3518, "title": "REQUEST: Repository maintenance on opentelemetry-collector-releases", "state": "open", "updated_at": "2026-06-12T20:12:02Z", "url": "https://github.com/open-telemetry/community/issues/3518", "labels": ["area/repo-maintenance"]}
+      ],
+      "sig_notes_url": null
+    },
+    "openinference": {
+      "prs": [
+        {"repo": "Arize-AI/openinference", "number": 3201, "title": "fix(claude_agent_sdk): Capture Thinking Blocks as Reasoning Message Content", "state": "open", "url": "https://github.com/Arize-ai/openinference/pull/3201"},
+        {"repo": "Arize-AI/openinference", "number": 3245, "title": "fix(strands-agents): skip non-Strands spans", "state": "open", "url": "https://github.com/Arize-ai/openinference/pull/3245"},
+        {"repo": "Arize-AI/openinference", "number": 3236, "title": "fix(google-adk): capture agent run inputs", "state": "open", "url": "https://github.com/Arize-ai/openinference/pull/3236"},
+        {"repo": "Arize-AI/openinference", "number": 3194, "title": "feat(google-genai): capture Gemini reasoning content and thoughts", "state": "closed", "url": "https://github.com/Arize-ai/openinference/pull/3194"},
+        {"repo": "Arize-AI/openinference", "number": 3204, "title": "feat(openai): capture Responses API reasoning summary", "state": "closed", "url": "https://github.com/Arize-ai/openinference/pull/3204"},
+        {"repo": "Arize-AI/openinference", "number": 3181, "title": "feat(openai): js reasoning blocks impl", "state": "closed", "url": "https://github.com/Arize-ai/openinference/pull/3181"},
+        {"repo": "Arize-AI/openinference", "number": 3172, "title": "feat(openai): reasoning blocks impl", "state": "closed", "url": "https://github.com/Arize-ai/openinference/pull/3172"},
+        {"repo": "Arize-AI/openinference", "number": 3145, "title": "feat(js): add openinference-instrumentation-openai-agents", "state": "closed", "url": "https://github.com/Arize-ai/openinference/pull/3145"},
+        {"repo": "Arize-AI/openinference", "number": 3233, "title": "fix(claude_agent_sdk): Preserve Propagated Session ID", "state": "closed", "url": "https://github.com/Arize-ai/openinference/pull/3233"},
+        {"repo": "Arize-AI/openinference", "number": 3139, "title": "fix(claude_agent_sdk): Record Real Tool Error Content on Failed Tool Spans", "state": "closed", "url": "https://github.com/Arize-ai/openinference/pull/3139"},
+        {"repo": "Arize-AI/openinference", "number": 3243, "title": "fix(strands-agents): map prompt-cache token counts", "state": "closed", "url": "https://github.com/Arize-ai/openinference/pull/3243"}
+      ],
+      "issues": [
+        {"repo": "Arize-AI/openinference", "number": 3241, "title": "[bug] OpenLLMetry/LangChain tool span mapping drops tool.name", "state": "open", "url": "https://github.com/Arize-ai/openinference/issues/3241"},
+        {"repo": "Arize-AI/openinference", "number": 3174, "title": "[feature request] DSPy instrumentor: span_name_formatter", "state": "open", "url": "https://github.com/Arize-ai/openinference/issues/3174"},
+        {"repo": "Arize-AI/openinference", "number": 3147, "title": "[python] Add reasoning content attributes to decorator LLM message support", "state": "open", "url": "https://github.com/Arize-ai/openinference/issues/3147"},
+        {"repo": "Arize-AI/openinference", "number": 3234, "title": "[agno] Workflow span ends prematurely for background runs", "state": "open", "url": "https://github.com/Arize-ai/openinference/issues/3234"},
+        {"repo": "Arize-AI/openinference", "number": 3149, "title": "[openai] Capture Responses reasoning blocks", "state": "closed", "url": "https://github.com/Arize-ai/openinference/issues/3149"},
+        {"repo": "Arize-AI/openinference", "number": 3151, "title": "[google-genai] Capture Gemini reasoning content and thought signatures", "state": "closed", "url": "https://github.com/Arize-ai/openinference/issues/3151"}
+      ]
+    },
+    "cncf": [
+      {"title": "Arize OpenInference 代码捐赠提案", "summary": "Arize向OTel社区提议将OpenInference代码库捐赠，加速OTel GenAI插桩覆盖率。仍在审议中。", "url": "https://github.com/open-telemetry/community/issues/3467"}
+    ]
+  },
+  "enterprise_blogs": [
+    {"source": "Datadog", "title": "AI Agent Monitoring & Observability Trends 2025-2026", "significance": "Datadog发布LLM可观测方案，覆盖Agent链路追踪、Token使用追踪、成本监控和延迟分析。预测2025-2026趋势包括多Agent追踪和自愈可观测。", "url": "https://www.datadoghq.com/blog/ai-agent-monitoring/"},
+    {"source": "Grafana Labs", "title": "AI Observability in Grafana Cloud", "significance": "Grafana Cloud推出AI可观测功能，基于OTel GenAI语义约定，提供Token追踪、延迟指标、成本归因和模型性能仪表盘。定位为开源/开放标准替代方案。", "url": "https://grafana.com/blog"},
+    {"source": "Dynatrace", "title": "Davis LLM Monitoring for AI Agent Observability", "significance": "Dynatrace Davis因果AI引擎扩展至LLM负载监控，支持Agent分布式追踪、Token消耗与成本归因、幻觉检测，自动发现OpenAI/Anthropic/Azure等多Provider。", "url": "https://www.dynatrace.com/blog"},
+    {"source": "Elastic", "title": "Observability for AI Agents: Tracing Multi-Step Reasoning", "significance": "Elastic发布AI Agent多步推理分布式追踪方案，提出Agent可观测性是APM下一演进方向，Kibana可视化Agent工作流。", "url": "https://www.elastic.co/blog"},
+    {"source": "Weave", "title": "AI Agent Observability: What You Need to Know", "significance": "Weave发布Agent可观测性专题文章，聚焦多步Agent工作流追踪、工具使用监控和Agent系统故障检测。", "url": "https://www.weave.ai/blog/ai-agent-observability"}
+  ],
+  "tools": {
+    "ai_native": [
+      {"name": "LangFuse", "version": "v3.185.0", "change": "新增实验性功能模态、Agent-first seed CLI、ClickHouse检测", "published": "2026-06-12", "url": "https://github.com/langfuse/langfuse/releases/tag/v3.185.0", "repo": "langfuse/langfuse"},
+      {"name": "LangFuse", "version": "v3.184.0", "change": "新增metadata列加速contains/startsWith操作、Agent反馈按钮", "published": "2026-06-11", "url": "https://github.com/langfuse/langfuse/releases/tag/v3.184.0", "repo": "langfuse/langfuse"},
+      {"name": "LangFuse", "version": "v3.183.0", "change": "新增trace/session发送web callouts、Monitors无数据模式增强、Agent广告管理", "published": "2026-06-10", "url": "https://github.com/langfuse/langfuse/releases/tag/v3.183.0", "repo": "langfuse/langfuse"},
+      {"name": "LangFuse", "version": "v3.182.0", "change": "新增MCP暴露evaluator/evaluation-rule工具（不稳定）、trace删除按钮、统一对话/提示词/模型页面", "published": "2026-06-10", "url": "https://github.com/langfuse/langfuse/releases/tag/v3.182.0", "repo": "langfuse/langfuse"},
+      {"name": "LangFuse", "version": "v3.181.0", "change": "新增Claude Fable 5和Mythos 5模型支持、对话覆盖层和命令菜单动效改进", "published": "2026-06-10", "url": "https://github.com/langfuse/langfuse/releases/tag/v3.181.0", "repo": "langfuse/langfuse"},
+      {"name": "LangFuse", "version": "v3.180.0", "change": "新增In-app Agent trace内追踪、Score v3 cursor前向迁移、Score flatten", "published": "2026-06-09", "url": "https://github.com/langfuse/langfuse/releases/tag/v3.180.0", "repo": "langfuse/langfuse"},
+      {"name": "LangFuse", "version": "v3.179.0", "change": "新增OpenAI Responses API连接支持、MCP & CLI设置页面和Agent工具banner", "published": "2026-06-08", "url": "https://github.com/langfuse/langfuse/releases/tag/v3.179.0", "repo": "langfuse/langfuse"},
+      {"name": "LangFuse", "version": "v3.178.0", "change": "新增In-app Agent连接LangFuse MCP、代码评估从dispatcher派生、MCP添加可选ID", "published": "2026-06-02", "url": "https://github.com/langfuse/langfuse/releases/tag/v3.178.0", "repo": "langfuse/langfuse"},
+      {"name": "Phoenix", "version": "v17.5.0", "change": "新增Agent子代理开关（subagents toggle）、助手设置增强", "published": "2026-06-12", "url": "https://github.com/Arize-ai/phoenix/releases/tag/arize-phoenix-v17.5.0", "repo": "Arize-AI/phoenix"},
+      {"name": "Phoenix", "version": "v17.4.0", "change": "新增Agent聊天菜单添加本地斜杠命令", "published": "2026-06-11", "url": "https://github.com/Arize-ai/phoenix/releases/tag/arize-phoenix-v17.4.0", "repo": "Arize-AI/phoenix"},
+      {"name": "Phoenix", "version": "v17.3.0", "change": "新增复制Trace ID聊天动作", "published": "2026-06-10", "url": "https://github.com/Arize-ai/phoenix/releases/tag/arize-phoenix-v17.3.0", "repo": "Arize-AI/phoenix"},
+      {"name": "Phoenix", "version": "v17.0.0", "change": "⚠️ 破坏性变更：新增admin管理助手启用/禁用系统设置，需查看MIGRATION.md", "published": "2026-06-02", "url": "https://github.com/Arize-ai/phoenix/releases/tag/arize-phoenix-v17.0.0", "repo": "Arize-AI/phoenix"},
+      {"name": "OpenLit", "version": "v1.22.0", "change": "新增自定义LLM网关支持、AI21 Labs自动插桩、Agent threat event helper", "published": "2026-06-10", "url": "https://github.com/openlit/openlit/releases/tag/openlit-1.22.0", "repo": "openlit/openlit"},
+      {"name": "OpenLLmetry", "version": "v0.61.0", "change": "新增OpenAI Agents GenAI semconv合规、Bedrock aioboto3异步支持、legacy_attributes暴露", "published": "2026-05-31", "url": "https://github.com/traceloop/openllmetry/releases/tag/0.61.0", "repo": "traceloop/openllmetry"}
+    ],
+    "traditional": [
+      {"name": "Grafana Labs", "title": "AI Observability in Grafana Cloud", "change": "推出基于OTel GenAI语义约定的LLM可观测功能，Token追踪、成本归因、模型性能仪表盘", "url": "https://grafana.com/blog"},
+      {"name": "Dynatrace", "title": "Davis LLM Monitoring扩展", "change": "Davis因果AI引擎扩展至LLM负载监控，支持Agent分布式追踪、Token消耗与成本归因、幻觉检测、多Provider自动发现", "url": "https://www.dynatrace.com/blog"},
+      {"name": "Elastic", "title": "AI Agent Observability: Tracing Multi-Step Reasoning", "change": "发布Agent多步推理分布式追踪方案，提出Agent可观测性是APM下一演进方向", "url": "https://www.elastic.co/blog"}
+    ]
+  }
+}

@@ -108,4 +108,24 @@
 
 ---
 
+## 七、趋势点评
+
+### 研究热点
+
+{TREND_HOTSPOTS}
+
+### 工程趋势
+
+{TREND_ENGINEERING}
+
+### 跨板块交叉洞察
+
+{TREND_CROSSInsight}
+
+### 值得关注的风险/盲区
+
+{TREND_RISKS}
+
+---
+
 *报告由 research-landscape skill 自动生成。*

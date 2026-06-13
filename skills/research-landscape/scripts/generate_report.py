@@ -306,6 +306,12 @@ def main():
     report = report.replace("{AI_NATIVE_TOOLS_TABLE}", render_ai_native_tools_table(tools.get("ai_native", [])))
     report = report.replace("{TRADITIONAL_TOOLS_TABLE}", render_traditional_tools_table(tools.get("traditional", [])))
 
+    # Plate 7: Trend commentary placeholders — Claude fills these in post-generation
+    report = report.replace("{TREND_HOTSPOTS}", "*待 Claude 基于报告数据撰写。*")
+    report = report.replace("{TREND_ENGINEERING}", "*待 Claude 基于报告数据撰写。*")
+    report = report.replace("{TREND_CROSSInsight}", "*待 Claude 基于报告数据撰写。*")
+    report = report.replace("{TREND_RISKS}", "*待 Claude 基于报告数据撰写。*")
+
     # Write report
     report_filename = f"research-landscape-report-{today}.md"
     report_path = Path(report_filename)
