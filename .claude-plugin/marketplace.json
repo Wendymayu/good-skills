@@ -2,5 +2,11 @@
   "name": "good-skills",
   "owner": {
     "name": "Wendy Ma"
-  }
+  },
+  "plugins": [
+    {
+      "name": "good-skills",
+      "source": "./"
+    }
+  ]
 }
