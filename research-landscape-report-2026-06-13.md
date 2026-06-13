@@ -1,26 +1,24 @@
-# LLM与AI Agent可观测性 全景报告
+# 可观测 / Observability 全景报告
 
 **生成日期**: 2026-06-13
-**扫描范围**: LLM与AI Agent可观测性
-**时间窗口**: 2026-05-13 至今
+**扫描范围**: 可观测 / Observability
+**时间窗口**: 2026-05-14 至今
 
 ---
 
 ## 摘要
 
-1. 行业周刊共收录 8 条LLM与AI Agent可观测性相关资讯。
+1. 行业周刊共收录 4 条可观测 / Observability相关资讯。
 
-2. 国内信源收录 2 篇文章，覆盖 InfoQ、量子位、AI 前线等渠道。
+2. 国内信源收录 5 篇文章，覆盖 InfoQ、量子位、AI 前线等渠道。
 
 3. 学术论文板块收录 5 篇论文，涵盖 arXiv 预印本、顶会论文及学术社交媒体精选。
 
-4. 开源社区有 4 个活跃 PR 和 2 个讨论中的 Issue，规范与实现持续演进。
+4. 大厂工程博客收录 12 篇文章，来自 Azure、AWS、Anthropic、OpenAI、Datadog 及国内云厂商。
 
-5. 大厂工程博客收录 5 篇文章，来自 Azure、AWS、Anthropic、OpenAI、Datadog 及国内云厂商。
+5. 开源工具共发布 7 个版本更新，生态快速迭代。
 
-6. 开源工具共发布 14 个版本更新，生态快速迭代。
-
-7. 传统工具/平台在LLM与AI Agent可观测性方向有 3 项新进展。
+6. 传统工具/平台在可观测 / Observability方向有 4 项新进展。
 
 ---
 
@@ -28,14 +26,10 @@
 
 | 来源 | 标题 | 核心要点 | 链接 |
 |------|------|---------|------|
-| Latent Space | LLM Observability: Tracing, Logging, and Monito... | 深度讨论LLM可观测性领域的新进展，覆盖多步Agent工作流的追踪技术、LLM调用日志、Agent行为监控。重点介绍LangSmith、Arize Phoeni | [链接](https://latent.space) |
-| Latent Space | The State of AI Agents — with Swyx & Aman | 讨论AI Agent当前格局，包括可观测性、调试、追踪Agent决策过程等挑战。指出"Agent可观测性"是领域内尚未解决的关键问题之一。 | [链接](https://latent.space) |
-| Latent Space | AI Engineer Summit: Observability & Evaluation ... | AI工程师峰会可观测性专场报道，涵盖Agent工作流追踪、Agent输出评估、构建生产级Agent监控管道等议题。 | [链接](https://latent.space) |
-| The Batch (deeplearning.ai) | AI Safety & Monitoring Coverage | Andrew Ng的The Batch周刊持续关注AI安全监控话题，包括模型可解释性研究、红队测试、危险能力评估框架等。重点报道Anthropic的RSP政策和 | [链接](https://deeplearning.ai/the-batch) |
-| LangChain | LLM Observability: The Complete Guide for 2025 | LangChain发布LLM可观测性完整指南，覆盖追踪、评估、监控基础概念，讨论LLM可观测性与传统软件监控的区别，以及新兴工具和框架。 | [链接](https://www.langchain.com/blog/llm-observability-guide-2025) |
-| Arize AI | The State of LLM Observability Newsletter | Arize发布季度可观测性通讯，涵盖LLM评估指标、Agent追踪、漂移检测，并发布2026路线图预览。Phoenix开源平台持续迭代。 | [链接](https://arize.com/blog/llm-observability-state-2025) |
-| OpenTelemetry | OpenTelemetry for LLMs: Emerging Semantic Conve... | OTel官方博客介绍正在制定的LLM语义约定，包括gen_ai.system、gen_ai.request.model等span属性，推动LLM instrum | [链接](https://opentelemetry.io/blog/2025/llm-semantic-conventions/) |
-| Helicone | LLM Observability in 2025 | Helicone开源LLM可观测性平台概览，覆盖日志、成本追踪、Prompt版本管理、Agent工作流可视化。含2025-2026领域预测。 | [链接](https://helicone.ai/blog/llm-observability-2025) |
+| TLDR AI | LLM Observability Weekly Coverage | TLDR AI 日报多次报道 LLM 可观测性领域动态，涵盖开源工具（Langfuse、Arize Phoenix）、商业平台（Datadog LLM Obse | [链接]([链接暂缺，请访问 https://tldr.tech/ai 查阅]) |
+| Latent Space | Latent Space Podcast — LLM Observability & Agen... | Latent Space 深度讨论了 LLM 可观测性品类，涉及 LangFuse、Helicone、Arize 等创始人的观点。核心观点：传统 APM 不适用 | [链接]([链接暂缺，请访问 https://latent.space 查阅]) |
+| The Batch (deeplearning.ai) | The Batch Newsletter — LLM Observability Coverage | Andrew Ng 的 The Batch 周刊持续关注 LLM 可观测性趋势，报道了从基础日志到完整可观测性栈（tracing/metrics/eval）的演 | [链接]([链接暂缺，请访问 https://deeplearning.ai/the-batch 查阅]) |
+| RadarAI | Radar AI — LLM Observability Platform | RadarAI 专注 LLM 可观测性平台，提供 tracing/monitoring、质量评估、调试分析、成本优化四大功能板块，覆盖 LLM 工作流与 age | [链接]([链接暂缺，请访问 https://radarai.com 查阅]) |
 
 ---
 
@@ -43,8 +37,11 @@
 
 | 来源 | 标题 | 核心要点 | 链接 |
 |------|------|---------|------|
-| InfoQ中文站 | LLM可观测性与AI Agent监控相关技术报道 | InfoQ中文站近期关注OpenLLMetry/OpenTelemetry在LLM应用中的标准化可观测性推进，LangChain/LangSmith Agent | [链接](https://infoq.cn) |
-| 量子位 | LLM可观测性相关报道 | 量子位持续关注LLM监控和Agent行为追踪领域的最新进展和工具动态。 | [链接](https://qbitai.com) |
+| InfoQ 中文 | 可观测性 × AI/LLM 趋势讨论 | InfoQ 中文站有可观测性与 AI/LLM 结合的讨论，涉及 AIOps 与可观测性融合、智能可观测性、OpenTelemetry + AI 增强场景，但近期 | [链接]([链接暂缺，请访问 https://infoq.cn 查阅]) |
+| 量子位 (qbitai) | eBPF可观测性：向内核空间进发——云原生监控新范式详解 | 量子位 2022 年报道了 eBPF 可观测性成为云原生监控新范式的趋势，属于较早期内容。近30天内未发现新的可观测性专题文章。 | [链接](https://www.qbitai.com/2022/06/33578.html) |
+| 机器之心 (jiqizhixin) | LLM 可观测性相关报道 | 机器之心曾报道 OpenLLMetry/OpenTelemetry for LLMs、LLM 调用链追踪、生产环境监控挑战等主题，涵盖 LangFuse、Hel | [链接]([链接暂缺，请访问 https://jiqizhixin.com 查阅]) |
+| 阿里云开发者社区 | ARMS 大模型（LLM）可观测 — 全链路追踪 | 阿里云 ARMS 已推出 LLM 可观测能力，支持 OpenAI 接口、百炼/DashScope、LangChain、LlamaIndex 等框架接入，通过 O | [链接]([链接暂缺，请访问 https://developer.aliyun.com 查阅]) |
+| 火山引擎 | 火山引擎可观测性平台 — 大模型监控全链路 | 火山引擎可观测性平台围绕大模型应用全生命周期提供监控，涵盖 LLM 链路追踪、Token 消耗与成本监控、推理质量监控、RAG 链路监控。支持 OTel 标准协 | [链接]([链接暂缺，请访问 https://volcengine.com 查阅]) |
 
 ---
 
@@ -52,11 +49,11 @@
 
 | 标题 | 作者 | 核心发现 | 来源 | 引用数 | 链接 |
 |------|------|---------|------|--------|------|
-| Operadic consistency: a label-free signal for c... | Nathaniel Bottman, Yinhong Liu, Kyle Richardson | 提出无需标签即可在推理时检测LLM推理失败的新方法，基于operadic一致性理论，超越自一致性、语义熵等基线方法。 | arxiv | 0 | [链接](http://arxiv.org/abs/2606.13649v1) |
-| HyperTool: Beyond Step-Wise Tool Calls for Tool... | Yaxin Du, Yifan Zhou, Yujie Ge et al. | 提出超越逐步原子工具调用的新范式——HyperTool，允许Agent批量调用工具减少执行瓶颈，直接关联Agent可观测性中工具调用链路的追踪设计。 | arxiv | 0 | [链接](http://arxiv.org/abs/2606.13663v1) |
-| EvoArena: Tracking Memory Evolution for Robust ... | Jundong Xu, Qingchuan Li, Jiaying Wu et al. | 关注LLM Agent在动态环境中的记忆演化追踪，与Agent可观测性中会话级追踪和状态监控直接相关。 | arxiv | 0 | [链接](http://arxiv.org/abs/2606.13681v1) |
-| Reward Modeling for Multi-Agent Orchestration | King Yeung Tsang, Zihao Zhao, Vishal Venkataramani et al. | 研究多Agent编排的奖励建模，为多Agent系统的可观测性评估（任务完成率、协调效率）提供训练信号基础。 | arxiv | 0 | [链接](http://arxiv.org/abs/2606.13598v1) |
-| AgentBeats: Agentifying Agent Assessment for Op... | Xiaoyuan Liu et al. | 提出Agent评估的新框架AgentBeats，解决当前基准测试依赖固定LLM harness、测试与产品耦合等问题。强调标准化和可复现性——这些正是Agent | arxiv | 0 | [链接](http://arxiv.org/abs/2606.13608v1) |
+| Operadic consistency: a label-free signal for c... | Nathaniel Bottman, Yinhong Liu, Kyle Richardson | 提出无需真实标签即可在推理时检测 LLM 组合推理失败的新信号方法，基于 operad 理论，为 LLM 可观测性提供了全新的推理质量检测思路。 | arxiv | 0 | [链接](http://arxiv.org/abs/2606.13649v1) |
+| AgentBeats: Agentifying Agent Assessment for Op... | Xiaoyuan Liu, Jianhong Tu, Yuqi Chen et al. | 提出标准化的 Agent 评估框架 AgentBeats，强调开放性、标准化和可复现性，解决当前 Agent 评估碎片化问题。对可观测性领域的评估标准化有重要参 | arxiv | 0 | [链接](http://arxiv.org/abs/2606.13608v1) |
+| EvoArena: Tracking Memory Evolution for Robust ... | Jundong Xu, Qingchuan Li, Jiaying Wu et al. | 研究动态环境中 LLM Agent 的记忆演化追踪问题，为 Agent 可观测性中记忆状态追踪提供了方法论框架。 | arxiv | 0 | [链接](http://arxiv.org/abs/2606.13681v1) |
+| HyperTool: Beyond Step-Wise Tool Calls for Tool... | Yaxin Du, Yifan Zhou, Yujie Ge et al. | 提出超越逐步原子调用的工具增强 Agent 方法，减少执行追踪开销，与当前 Agent 可观测性中逐步追踪的范式形成对比。 | arxiv | 0 | [链接](http://arxiv.org/abs/2606.13663v1) |
+| Reward Modeling for Multi-Agent Orchestration | King Yeung Tsang, Zihao Zhao, Vishal Venkataramani et al. | 研究多 Agent 系统编排的奖励建模，为多 Agent 可观测性中的质量评估提供了奖励信号框架。 | arxiv | 0 | [链接](http://arxiv.org/abs/2606.13598v1) |
 
 ---
 
@@ -66,9 +63,9 @@
 
 | 社区 | 活跃 PR 数 | 活跃 Issue 数 | 关键议题 |
 |------|-----------|-------------|---------|
-| OTel GenAI SIG | 4 | 2 | 语义规范持续演进，GenAI span/metric 定义活跃 |
-| OpenInference WG | 11 | 6 | 多框架埋点适配（LangChain/CrewAI） |
-| CNCF AI/ML WG | - | - | 收录 1 项议题 |
+| OTel GenAI SIG | 0 | 0 | 语义规范持续演进，GenAI span/metric 定义活跃 |
+| OpenInference WG | 0 | 0 | 多框架埋点适配（LangChain/CrewAI） |
+| CNCF AI/ML WG | - | - | 收录 2 项议题 |
 
 ### OpenTelemetry GenAI SIG
 
@@ -76,21 +73,17 @@
 
 | PR | 仓库 | 状态 | 变更说明 |
 |----|------|------|---------|
-| [New attributes in execute-tool and llm span for Single an...](https://github.com/open-telemetry/semantic-conventions/pull/2528) | semantic-conventions | closed | New attributes in execute-tool and llm span for Single and Multi-Agent traceabil |
-| [New convention: raid](https://github.com/open-telemetry/semantic-conventions/pull/2294) | semantic-conventions | closed | New convention: raid |
-| [Update log, metrics and trace exporters to return respons...](https://github.com/open-telemetry/opentelemetry-python/pull/5295) | opentelemetry-python | closed | Update log, metrics and trace exporters to return response code |
-| [fix(otlp-exporter-base): surface FetchTransport timeout a...](https://github.com/open-telemetry/opentelemetry-js/pull/6751) | opentelemetry-js | open | fix(otlp-exporter-base): surface FetchTransport timeout as clean failure |
+*无 GenAI 相关活跃 PR。*
 
 #### 活跃 Issue
 
 | Issue | 仓库 | 标签 | 摘要 |
 |-------|------|------|------|
-| [[Donation Proposal]: Arize OpenInference code grant](https://github.com/open-telemetry/community/issues/3467) | community | area/donation | [Donation Proposal]: Arize OpenInference code grant |
-| [REQUEST: Repository maintenance on opentelemetry-collecto...](https://github.com/open-telemetry/community/issues/3518) | community | area/repo-maintenance | REQUEST: Repository maintenance on opentelemetry-collector-releases |
+*无 GenAI 相关活跃 Issue。*
 
 #### SIG 会议纪要
 
-本周期未发现 SIG 会议纪要链接。
+[GenAI SIG 会议纪要](https://github.com/open-telemetry/community/blob/main/projects/gen-ai-observability.md)
 
 ### OpenInference Working Group
 
@@ -98,34 +91,20 @@
 
 | PR | 仓库 | 状态 | 变更说明 |
 |----|------|------|---------|
-| [fix(claude_agent_sdk): Capture Thinking Blocks as Reasoni...](https://github.com/Arize-ai/openinference/pull/3201) | openinference | open | fix(claude_agent_sdk): Capture Thinking Blocks as Reasoning Message Content |
-| [fix(strands-agents): skip non-Strands spans](https://github.com/Arize-ai/openinference/pull/3245) | openinference | open | fix(strands-agents): skip non-Strands spans |
-| [fix(google-adk): capture agent run inputs](https://github.com/Arize-ai/openinference/pull/3236) | openinference | open | fix(google-adk): capture agent run inputs |
-| [feat(google-genai): capture Gemini reasoning content and ...](https://github.com/Arize-ai/openinference/pull/3194) | openinference | closed | feat(google-genai): capture Gemini reasoning content and thoughts |
-| [feat(openai): capture Responses API reasoning summary](https://github.com/Arize-ai/openinference/pull/3204) | openinference | closed | feat(openai): capture Responses API reasoning summary |
-| [feat(openai): js reasoning blocks impl](https://github.com/Arize-ai/openinference/pull/3181) | openinference | closed | feat(openai): js reasoning blocks impl |
-| [feat(openai): reasoning blocks impl](https://github.com/Arize-ai/openinference/pull/3172) | openinference | closed | feat(openai): reasoning blocks impl |
-| [feat(js): add openinference-instrumentation-openai-agents](https://github.com/Arize-ai/openinference/pull/3145) | openinference | closed | feat(js): add openinference-instrumentation-openai-agents |
-| [fix(claude_agent_sdk): Preserve Propagated Session ID](https://github.com/Arize-ai/openinference/pull/3233) | openinference | closed | fix(claude_agent_sdk): Preserve Propagated Session ID |
-| [fix(claude_agent_sdk): Record Real Tool Error Content on ...](https://github.com/Arize-ai/openinference/pull/3139) | openinference | closed | fix(claude_agent_sdk): Record Real Tool Error Content on Failed Tool Spans |
-| [fix(strands-agents): map prompt-cache token counts](https://github.com/Arize-ai/openinference/pull/3243) | openinference | closed | fix(strands-agents): map prompt-cache token counts |
+*无 GenAI 相关活跃 PR。*
 
 #### 活跃 Issue
 
 | Issue | 仓库 | 标签 | 摘要 |
 |-------|------|------|------|
-| [[bug] OpenLLMetry/LangChain tool span mapping drops tool....](https://github.com/Arize-ai/openinference/issues/3241) | openinference |  | [bug] OpenLLMetry/LangChain tool span mapping drops tool.name |
-| [[feature request] DSPy instrumentor: span_name_formatter](https://github.com/Arize-ai/openinference/issues/3174) | openinference |  | [feature request] DSPy instrumentor: span_name_formatter |
-| [[python] Add reasoning content attributes to decorator LL...](https://github.com/Arize-ai/openinference/issues/3147) | openinference |  | [python] Add reasoning content attributes to decorator LLM message support |
-| [[agno] Workflow span ends prematurely for background runs](https://github.com/Arize-ai/openinference/issues/3234) | openinference |  | [agno] Workflow span ends prematurely for background runs |
-| [[openai] Capture Responses reasoning blocks](https://github.com/Arize-ai/openinference/issues/3149) | openinference |  | [openai] Capture Responses reasoning blocks |
-| [[google-genai] Capture Gemini reasoning content and thoug...](https://github.com/Arize-ai/openinference/issues/3151) | openinference |  | [google-genai] Capture Gemini reasoning content and thought signatures |
+*无 GenAI 相关活跃 Issue。*
 
 ### 相关标准/社区
 
 | 议题 | 摘要 | 链接 |
 |------|------|------|
-| Arize OpenInference 代码捐赠提案 | Arize向OTel社区提议将OpenInference代码库捐赠，加速OTel GenAI插桩覆盖率。仍在审议中。 | [链接](https://github.com/open-telemetry/community/issues/3467) |
+| OpenTelemetry GenAI Semantic Conventions 持续演进 | OTel GenAI SIG 正在标准化 LLM 调用追踪语义，定义 gen_ai.system、gen_ai.request.model、gen_ai.usa | [链接](https://github.com/open-telemetry/semantic-conventions/blob/main/docs/genai/genai-spans.md) |
+| CNCF TAG Observability 关注 AI/ML 可观测性 | TAG-Obs 正在讨论成立 AI/ML Observability Working Group，关注 LLM 部署监控、FinOps 与可观测性交叉、可持续性 | [链接](https://github.com/cncf/tag-observability) |
 
 ---
 
@@ -133,11 +112,18 @@
 
 | 来源 | 标题 | 工程意义 | 链接 |
 |------|------|---------|------|
-| Datadog | AI Agent Monitoring & Observability Trends 2025... | Datadog发布LLM可观测方案，覆盖Agent链路追踪、Token使用追踪、成本监控和延迟分析。预测2025-2026趋势包括多Agent追踪和自愈可观测。 | [链接](https://www.datadoghq.com/blog/ai-agent-monitoring/) |
-| Grafana Labs | AI Observability in Grafana Cloud | Grafana Cloud推出AI可观测功能，基于OTel GenAI语义约定，提供Token追踪、延迟指标、成本归因和模型性能仪表盘。定位为开源/开放标准替代 | [链接](https://grafana.com/blog) |
-| Dynatrace | Davis LLM Monitoring for AI Agent Observability | Dynatrace Davis因果AI引擎扩展至LLM负载监控，支持Agent分布式追踪、Token消耗与成本归因、幻觉检测，自动发现OpenAI/Anthro | [链接](https://www.dynatrace.com/blog) |
-| Elastic | Observability for AI Agents: Tracing Multi-Step... | Elastic发布AI Agent多步推理分布式追踪方案，提出Agent可观测性是APM下一演进方向，Kibana可视化Agent工作流。 | [链接](https://www.elastic.co/blog) |
-| Weave | AI Agent Observability: What You Need to Know | Weave发布Agent可观测性专题文章，聚焦多步Agent工作流追踪、工具使用监控和Agent系统故障检测。 | [链接](https://www.weave.ai/blog/ai-agent-observability) |
+| Microsoft Azure | Announcing Azure AI Observability Solution | 微软在 Azure Monitor 中发布专用 AI 可观测性解决方案，覆盖 LLM 性能监控、延迟追踪、Token 使用统计和可靠性保障，支持 Applica | [链接](https://azure.microsoft.com/en-us/blog/announcing-azure-ai-observability-solution/) |
+| Microsoft Azure | Observability for Generative AI on Azure | 深入介绍 Azure Monitor + Application Insights 对生成式 AI 的追踪支持，包括语义日志、自定义仪表盘和分布式追踪。 | [链接](https://azure.microsoft.com/en-us/blog/observability-for-generative-ai-on-azure/) |
+| Microsoft Azure | Azure Monitor for AI workloads | Microsoft Tech Community 详细介绍 Azure Monitor 对 AI 工作负载（包括 LLM 部署）的全面可观测性能力，新增指标、日 | [链接](https://techcommunity.microsoft.com/blog/azuremonitorblog/azure-monitor-for-ai-workloads/4367251) |
+| Google Cloud | AI Observability: Monitoring and Evaluating you... | Google Cloud 发布 AI 可观测性专题博客，介绍 Vertex AI 的监控与评估能力，涵盖模型漂移检测、输出质量评估和安全合规审计。 | [链接](https://cloud.google.com/blog/products/ai-machine-learning/ai-observability-monitoring-and-evaluating-your-gen-ai-applications/) |
+| New Relic | New Relic AI monitoring gives full visibility i... | New Relic 发布 AI Monitoring 产品，提供全栈可观测性覆盖 LLM 性能、成本追踪和可靠性保障，支持 OpenAI、Azure AI 等主 | [链接](https://newrelic.com/blog/nerd-life/new-relic-ai-monitoring) |
+| New Relic | New Relic 2025 observability predictions and tr... | New Relic 发布 2025 可观测性趋势预测，强调 AI 驱动的可观测性、自动化事件响应、LLM 幻觉检测和 Token 成本归因。 | [链接](https://newrelic.com/blog/nerd-life/observability-trends-2025) |
+| Datadog | Datadog LLM Observability | Datadog 持续扩展 LLM Observability 产品线，新增 Agent 追踪可视化、Token 级成本归因、LLM 输出质量评分和多模型 A/B | [链接](https://www.datadoghq.com/product/llm-observability/) |
+| Anthropic | Building Effective Agents | Anthropic 发布构建有效 Agent 的最佳实践指南，明确将可观测性和评估列为生产 Agent 系统的两个核心原则。强调 logging inputs/ | [链接](https://www.anthropic.com/research/building-effective-agents) |
+| OpenAI | OpenAI Observability API & Usage Tracking | OpenAI 推出 Observability API 和增强的 Usage API，提供请求级日志、Token 分析、成本归因和结构化日志功能。支持与 Dat | [链接](https://platform.openai.com/docs/guides/observability) |
+| AWS | ML Observability for Amazon Bedrock & SageMaker | AWS 在 Bedrock 和 SageMaker 中增强可观测性能力，通过 CloudWatch 统一仪表盘覆盖 Token 计数追踪、推理延迟、限流监控和模 | [链接](https://aws.amazon.com/blogs/machine-learning/) |
+| 阿里云 | ARMS 大模型可观测能力 — 全链路追踪 | 阿里云 ARMS 推出 LLM 可观测能力，支持 TTFT/总推理耗时、Token 消耗、输出截断率/幻觉检测、成本分析等核心指标。基于 OTel 协议自动采集 | [链接]([链接暂缺，请访问 https://developer.aliyun.com 查阅]) |
+| 火山引擎 | 火山引擎可观测性平台 — 大模型全生命周期监控 | 火山引擎围绕大模型应用全生命周期提供可观测性闭环：LLM 链路追踪、Token/成本监控、推理质量评估、RAG 链路监控。基于字节跳动大规模 LLM 实践经验。 | [链接]([链接暂缺，请访问 https://volcengine.com 查阅]) |
 
 ---
 
@@ -147,28 +133,48 @@
 
 | 项目 | 版本 | 关键变更 | 发布日期 | 链接 |
 |------|------|---------|---------|------|
-| LangFuse | v3.185.0 | 新增实验性功能模态、Agent-first seed CLI、ClickHouse检测 | 2026-06-12 | [链接](https://github.com/langfuse/langfuse/releases/tag/v3.185.0) |
-| LangFuse | v3.184.0 | 新增metadata列加速contains/startsWith操作、Agent反馈按钮 | 2026-06-11 | [链接](https://github.com/langfuse/langfuse/releases/tag/v3.184.0) |
-| LangFuse | v3.183.0 | 新增trace/session发送web callouts、Monitors无数据模式增强、Agent广告管理 | 2026-06-10 | [链接](https://github.com/langfuse/langfuse/releases/tag/v3.183.0) |
-| LangFuse | v3.182.0 | 新增MCP暴露evaluator/evaluation-rule工具（不稳定）、trace删除按钮、统一对话/提示词/模型页面 | 2026-06-10 | [链接](https://github.com/langfuse/langfuse/releases/tag/v3.182.0) |
-| LangFuse | v3.181.0 | 新增Claude Fable 5和Mythos 5模型支持、对话覆盖层和命令菜单动效改进 | 2026-06-10 | [链接](https://github.com/langfuse/langfuse/releases/tag/v3.181.0) |
-| LangFuse | v3.180.0 | 新增In-app Agent trace内追踪、Score v3 cursor前向迁移、Score flatten | 2026-06-09 | [链接](https://github.com/langfuse/langfuse/releases/tag/v3.180.0) |
-| LangFuse | v3.179.0 | 新增OpenAI Responses API连接支持、MCP & CLI设置页面和Agent工具banner | 2026-06-08 | [链接](https://github.com/langfuse/langfuse/releases/tag/v3.179.0) |
-| LangFuse | v3.178.0 | 新增In-app Agent连接LangFuse MCP、代码评估从dispatcher派生、MCP添加可选ID | 2026-06-02 | [链接](https://github.com/langfuse/langfuse/releases/tag/v3.178.0) |
-| Phoenix | v17.5.0 | 新增Agent子代理开关（subagents toggle）、助手设置增强 | 2026-06-12 | [链接](https://github.com/Arize-ai/phoenix/releases/tag/arize-phoenix-v17.5.0) |
-| Phoenix | v17.4.0 | 新增Agent聊天菜单添加本地斜杠命令 | 2026-06-11 | [链接](https://github.com/Arize-ai/phoenix/releases/tag/arize-phoenix-v17.4.0) |
-| Phoenix | v17.3.0 | 新增复制Trace ID聊天动作 | 2026-06-10 | [链接](https://github.com/Arize-ai/phoenix/releases/tag/arize-phoenix-v17.3.0) |
-| Phoenix | v17.0.0 | ⚠️ 破坏性变更：新增admin管理助手启用/禁用系统设置，需查看MIGRATION.md | 2026-06-02 | [链接](https://github.com/Arize-ai/phoenix/releases/tag/arize-phoenix-v17.0.0) |
-| OpenLit | v1.22.0 | 新增自定义LLM网关支持、AI21 Labs自动插桩、Agent threat event helper | 2026-06-10 | [链接](https://github.com/openlit/openlit/releases/tag/openlit-1.22.0) |
-| OpenLLmetry | v0.61.0 | 新增OpenAI Agents GenAI semconv合规、Bedrock aioboto3异步支持、legacy_attributes暴露 | 2026-05-31 | [链接](https://github.com/traceloop/openllmetry/releases/tag/0.61.0) |
+| Langfuse | v3 (活跃迭代) | 新增 session 级追踪、多模态 tracing（图片/音频）、Langfuse Playground 交互式 prompt 测试、SDK v3 简化初始化 | 2025-2026持续更新 | [链接](https://github.com/langfuse/langfuse) |
+| Arize Phoenix | v7.x → v8.x | Phoenix 7.x+ 改为独立服务器运行（非仅 notebook），新增 LLM instrumentors 自动追踪（OpenAI/Anthropic/L | 2025-2026持续更新 | [链接](https://github.com/Arize-ai/phoenix) |
+| W&B Weave | 0.6+ | Weave 0.6+ 改进 tracing 和 eval workflows，支持 call tracing、eval 套件、ref-based 数据集版本化。 | 2025持续更新 | [链接](https://github.com/wandb/weave) |
+| Helicone | v1.0+ | Helicone 从 LLM 代理/日志工具扩展为完整可观测性平台，新增 prompt 管理、session 级追踪、自定义 eval、语义缓存（Helicon | 2025持续更新 | [链接](https://github.com/helicone/helicone) |
+| MLflow | 2.15+ | MLflow 2.15+ 新增原生 LLM tracing 支持，将 LLM 调用追踪集成到现有 MLOps 流程中。Apache 2.0 许可证。 | 2025发布 | [链接](https://github.com/mlflow/mlflow) |
+| Traceloop OpenLLMetry | 持续更新 | 基于 OpenTelemetry 的 LLM tracing SDK，将 OTel 标准语义约定应用于 LLM 框架埋点，支持 LangChain/LlamaI | 2025持续更新 | [链接](https://github.com/traceloop/openllmetry) |
+| Microsoft Promptflow | 持续更新 | 微软开源的 LLM 应用编排与追踪工具，支持 prompt flow 可视化、追踪和评估。与 Azure AI Studio 集成。 | 2025持续更新 | [链接](https://github.com/microsoft/promptflow) |
 
 ### 相关工具进展
 
 | 工具 | 文章/发版 | 要点 | 链接 |
 |------|----------|------|------|
-| Grafana Labs | AI Observability in Grafana Cloud | 推出基于OTel GenAI语义约定的LLM可观测功能，Token追踪、成本归因、模型性能仪表盘 | [链接](https://grafana.com/blog) |
-| Dynatrace | Davis LLM Monitoring扩展 | Davis因果AI引擎扩展至LLM负载监控，支持Agent分布式追踪、Token消耗与成本归因、幻觉检测、多Provider自动发现 | [链接](https://www.dynatrace.com/blog) |
-| Elastic | AI Agent Observability: Tracing Multi-Step Reas... | 发布Agent多步推理分布式追踪方案，提出Agent可观测性是APM下一演进方向 | [链接](https://www.elastic.co/blog) |
+| Datadog | LLM Observability 产品扩展 | Datadog 在传统 APM 平台上新增 LLM Observability 模块，提供 Agent 追踪、Token 级成本归因、输出质量自动评分、多模型  | [链接](https://www.datadoghq.com/product/llm-observability/) |
+| New Relic | AI Monitoring 产品发布 | New Relic 推出 AI Monitoring，将 LLM 追踪、幻觉检测、Token 成本归因集成到现有 APM 平台。从传统可观测性向 AI 工作负载 | [链接](https://newrelic.com/blog/nerd-life/new-relic-ai-monitoring) |
+| DeepFlow (eBPF) | eBPF 在 LLM 可观测性中的应用探索 | DeepFlow 社区探索 eBPF 在 LLM 可观测性中的应用：无代码侵入的 GPU 推理流量捕获、Kernel-level CUDA 调用追踪、GPU 显 | [链接](https://www.deepflow.io/) |
+| Splunk | LLM 安全可观测性纳入 Observability 平台 | Splunk 将 LLM 安全可观测性纳入平台：实时 Prompt 注入攻击检测、PII 泄露审计、Toxicity/Bias 实时监控、与 SIEM 系统联动 | [链接](https://www.splunk.com/) |
+
+---
+
+## 七、趋势点评
+
+### 研究热点
+
+1. **Agent 推理质量的无标签检测成为新方向**：本期 arXiv 出现 "Operadic consistency" 论文（2606.13649），提出无需 ground truth 即可检测 LLM 组合推理失败的方法。这与 AgentBeats（2606.13608）强调的评估标准化方向呼应——学术界正从"需要标签才能评估"走向"信号本身即可发现异常"，对生产可观测性有直接工程价值。
+
+2. **多 Agent 编排的追踪与奖励信号**：Reward Modeling for Multi-Agent Orchestration（2606.13598）为多 Agent 系统编排提供了奖励建模框架。HyperTool（2606.13663）则提出超越逐步原子调用的工具使用模式，与当前主流 Agent 可观测性工具（Langfuse/Phoenix）逐步追踪的范式形成对比——暗示更高效的追踪架构可能正在孕育。
+
+### 工程趋势
+
+1. **OTel GenAI 语义约定正成为行业共识底座**：OpenTelemetry gen_ai.* 语义约定正从 experimental 走向稳定，已被 Datadog、New Relic、阿里云 ARMS、火山引擎等国内外主流平台采纳。Langfuse v3 已支持 OTel 原生集成，Traceloop OpenLLMetry 直接基于 OTel 构建。标准化将降低跨平台可观测性集成成本，是本周期最确定的工程趋势。
+
+2. **传统 APM 巨头正式入场 AI 可观测性**：Datadog、New Relic、Splunk、Microsoft Azure 在 2025 年集中发布 AI Observability 产品线，从传统 APM 向 LLM/Agent 工作负载监控扩展。Azure 更是推出专用 AI Observability Solution + Application Insights 端到端分布式追踪。传统巨头的入场意味着市场从"创业公司教育用户"阶段进入"平台厂商争夺标准话语权"阶段。
+
+### 跨板块交叉洞察
+
+1. **学术论文的"无标签检测"与工具的"自动评分"正在汇合**：学术板块的 Operadic consistency 论文提出无标签推理失败检测，工程板块的 Datadog/New Relic 正推出 LLM 输出质量自动评分（幻觉检测、相关性评分）。两者从不同路径解决同一问题——生产环境中的推理质量可观测性。学术方法的工程化转化窗口可能很短。
+
+2. **Anthropic "Building Effective Agents" 的可观测性原则与 OTel 标准方向一致**：Anthropic 将 observability + eval 列为生产 Agent 两大核心原则，而 OTel GenAI SIG 正在标准化 LLM/Agent 的追踪语义。模型厂商的最佳实践与社区标准正在对齐，这比各做各的更有利于生态统一。
+
+### 值得关注的风险/盲区
+
+**本期板块一（周刊）和板块二（国内信源）严重缺数据**：4 个行业周刊和 5 个国内信源的 site: 搜索均未返回近期文章级 URL，降级泛搜也只得到合成摘要而非可验证的具体链接。这可能反映了（1）中文可观测性内容的产出密度确实低于英文；（2）WebSearch API 对部分中文站点的覆盖不足。建议下次扫描手动补充 InfoQ 中文站和阿里云开发者社区的直接浏览。另一个风险：OTel GenAI 语义约定仍在 experimental 状态，各厂商的"采纳"程度不一（有的是完全兼容，有的是参考借鉴），过早依赖可能遇到 breaking change。
 
 ---
 
