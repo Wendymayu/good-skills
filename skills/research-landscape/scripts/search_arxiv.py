@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Search arXiv for papers on LLM/AI agent observability."""
+"""Search arXiv for papers on any topic."""
 
 import argparse
 import json

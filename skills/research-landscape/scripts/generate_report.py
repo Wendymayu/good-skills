@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate a structured markdown report from combined v2 research results."""
+"""Generate a structured markdown report from combined research results."""
 
 import argparse
 import json
@@ -32,7 +32,7 @@ def deduplicate_papers(arxiv_papers: list[dict], s2_papers: list[dict]) -> list[
     return merged
 
 
-def generate_summary(data: dict) -> str:
+def generate_summary(data: dict, topic: str = "") -> str:
     observations = []
 
     otel = data.get("standards", {}).get("otel", {})
@@ -47,7 +47,7 @@ def generate_summary(data: dict) -> str:
     domestic_count = len(data.get("domestic", []))
 
     if newsletters_count > 0:
-        observations.append(f"行业周刊共收录 {newsletters_count} 条可观测性相关资讯。")
+        observations.append(f"行业周刊共收录 {newsletters_count} 条{topic}相关资讯。")
 
     if domestic_count > 0:
         observations.append(f"国内信源收录 {domestic_count} 篇文章，覆盖 InfoQ、量子位、AI 前线等渠道。")
@@ -56,16 +56,16 @@ def generate_summary(data: dict) -> str:
         observations.append(f"学术论文板块收录 {paper_count} 篇论文，涵盖 arXiv 预印本、顶会论文及学术社交媒体精选。")
 
     if pr_count > 0 or issue_count > 0:
-        observations.append(f"OTel GenAI SIG 有 {pr_count} 个活跃 PR 和 {issue_count} 个讨论中的 Issue，语义规范持续演进。")
+        observations.append(f"开源社区有 {pr_count} 个活跃 PR 和 {issue_count} 个讨论中的 Issue，规范与实现持续演进。")
 
     if blogs_count > 0:
         observations.append(f"大厂工程博客收录 {blogs_count} 篇文章，来自 Azure、AWS、Anthropic、OpenAI、Datadog 及国内云厂商。")
 
     if tools_native > 0:
-        observations.append(f"AI-Native 可观测工具共发布 {tools_native} 个版本更新，生态快速迭代。")
+        observations.append(f"开源工具共发布 {tools_native} 个版本更新，生态快速迭代。")
 
     if tools_traditional > 0:
-        observations.append(f"传统 APM/可观测厂商（Grafana、Dynatrace、Splunk、Elastic）在 AI Agent 监控方向有 {tools_traditional} 项新进展。")
+        observations.append(f"传统工具/平台在{topic}方向有 {tools_traditional} 项新进展。")
 
     if not observations:
         return "本监测窗口内各板块活动相对平静。建议扩大时间范围或放宽话题关键词以获取更多信号。"
@@ -230,7 +230,7 @@ def render_traditional_tools_table(items: list[dict]) -> str:
 # --- Main ---
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate LLM observability v2 research report")
+    parser = argparse.ArgumentParser(description="Generate research landscape report")
     parser.add_argument("--input", required=True, help="Path to combined results JSON")
     parser.add_argument("--template", required=True, help="Path to report template markdown")
     parser.add_argument("--topic", required=True, help="Research topic for the report title")
@@ -273,7 +273,7 @@ def main():
     report = report.replace("{DATE}", today)
     report = report.replace("{TOPIC}", args.topic)
     report = report.replace("{SINCE_DATE}", args.since)
-    report = report.replace("{SUMMARY}", generate_summary(data))
+    report = report.replace("{SUMMARY}", generate_summary(data, args.topic))
 
     # Plate 1: Newsletters
     report = report.replace("{NEWSLETTERS_TABLE}", render_newsletters_table(data.get("newsletters", [])))
@@ -307,7 +307,7 @@ def main():
     report = report.replace("{TRADITIONAL_TOOLS_TABLE}", render_traditional_tools_table(tools.get("traditional", [])))
 
     # Write report
-    report_filename = f"research-observe-report-{today}.md"
+    report_filename = f"research-landscape-report-{today}.md"
     report_path = Path(report_filename)
     report_path.write_text(report, encoding="utf-8")
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Search Semantic Scholar for papers on LLM/AI agent observability."""
+"""Search Semantic Scholar for papers on any topic."""
 
 import argparse
 import json
