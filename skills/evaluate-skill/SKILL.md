@@ -1,7 +1,7 @@
 ---
 name: evaluate-skill
 description: Use when the user asks to "evaluate", "评估", "验证", "质量检查" a skill's output quality. Evaluates any good-skills skill using SKILL.md as rubric with structural assertions + LLM-as-Judge compliance scoring. Supports single-case, batch, and run-then-evaluate modes.
-allowed-tools: Read, Write, Glob, Grep, WebSearch, WebFetch, Bash(python *), TodoWrite
+allowed-tools: Read, Write, Glob, Grep, WebSearch, WebFetch, TodoWrite
 argument-hint: "[skill-name] [--input <路径>] [--run <skill参数>] [--golden <路径>] [--regress <参考路径>] [--verbose]"
 ---
 
@@ -33,15 +33,15 @@ argument-hint: "[skill-name] [--input <路径>] [--run <skill参数>] [--golden 
 
 严格按以下 5 步顺序执行。不得跳过步骤。
 
-### 步骤 0：定位 SKILL.md + 输入文件
+### 步骤 1：定位 SKILL.md + 输入文件
 
 创建 TodoWrite 清单：
 ```
-- [ ] 步骤 0：定位 SKILL.md 和输入文件
-- [ ] 步骤 1：通用结构断言
-- [ ] 步骤 2：SKILL.md 合规性评估（LLM-as-Judge）
-- [ ] 步骤 3：回归对比（可选）
-- [ ] 步骤 4：聚合与生成评估报告
+- [ ] 步骤 1：定位 SKILL.md 和输入文件
+- [ ] 步骤 2：通用结构断言
+- [ ] 步骤 3：SKILL.md 合规性评估（LLM-as-Judge）
+- [ ] 步骤 4：回归对比（可选）
+- [ ] 步骤 5：聚合与生成评估报告
 ```
 
 **定位 SKILL.md**：根据传入的 `skill-name`，在 `skills/` 目录下查找对应的 `SKILL.md`。
@@ -64,15 +64,23 @@ Glob: skills/{skill-name}/SKILL.md
    ```bash
    Glob: {golden路径}/case-*/*
    ```
-   每个用例目录应有 `input.yaml` 和 `reference/` 子目录
+   每个用例目录应有 `input.yaml`（定义测试输入参数：skill 名称、调用参数、描述、优先级）和 `reference/` 子目录（人工审核过的参考输出）。`input.yaml` 格式：
+   ```yaml
+   skill: web-to-local-md
+   args: "https://javaguide.cn/ai/ --github-repo Snailclimb/JavaGuide --output-dir ./downloaded"
+   description: "JavaGuide AI 章节下载测试"
+   priority: high
+   ```
+   evaluate-skill 使用 `input.yaml` 中的 `args` 来理解该用例的测试意图，但不自动执行目标 skill（除非 --run 模式）。评估对象是 `reference/` 中的参考输出文件。
 4. 如果以上都未指定 → 在当前目录下自动查找匹配 skill 输出模式的文件。常见模式：
    - `research-landscape` → `research-landscape-report-*.md`
    - `learn-domain` → `learn-domain-guide-*.md`
    - `web-to-local-md` → `downloaded/**/*.md`
+   - **未知 skill** → Read 该 skill 的 SKILL.md，从其工作流步骤中提取输出文件命名模式，然后 Glob 查找
 
 **如果找不到任何输出文件** → 报错，告知用户没有可评估的输出。建议使用 `--run` 模式先执行目标 skill，或使用 `--input` 指定已有文件路径。
 
-### 步骤 1：通用结构断言
+### 步骤 2：通用结构断言
 
 Claude 读输出文件，逐项检查通用断言清单。每项产出 ✅/❌ + 具体问题描述。
 
@@ -100,51 +108,17 @@ Claude 读输出文件，逐项检查通用断言清单。每项产出 ✅/❌ +
 
 **批量模式**：对每个 case-* 用例独立执行断言，汇总各用例结果。
 
-### 步骤 2：SKILL.md 合规性评估（LLM-as-Judge）
+### 步骤 3：SKILL.md 合规性评估（LLM-as-Judge）
 
 Claude 读 SKILL.md + 读输出文件，对照评估输出是否符合 SKILL.md 定义。
 
-评分维度详见 references/scoring-rubric.md，4 个维度 1-5 分制：
+评分维度详见 references/scoring-rubric.md（完整 1-5 分定义和判断依据示例）。
 
-**维度 1：完整性（Completeness）— 1-5 分**
-
-| 分数 | 定义 | 判断依据示例 |
-|------|------|-------------|
-| 1 | 缺少 SKILL.md 要求的 3+ 个核心输出板块 | "报告缺少板块一、二、四" |
-| 2 | 缺少 2 个板块，或超过 2 个板块内容严重不足 | "板块二仅有 1 条，板块五仅有 2 条" |
-| 3 | 所有板块存在，但 1-2 个板块内容较薄 | "板块六仅 3 条，SKILL.md 预期 5+" |
-| 4 | 所有板块完整，个别条目偏少但可接受 | "所有板块有内容，板块四偏少" |
-| 5 | 所有板块完整充实，条目数量符合 SKILL.md 预期 | "7 个板块均有 5+ 条内容" |
-
-**维度 2：准确性（Accuracy）— 1-5 分**
-
-| 分数 | 定义 | 判断依据示例 |
-|------|------|-------------|
-| 1 | 严重事实错误或合成内容 | "3 个 URL 是合成内容，无法在真实网站找到" |
-| 2 | 有 1-2 处可验证的错误 | "2 个链接返回 404" |
-| 3 | 绝大部分准确，个别条目需外部验证 | "1 个摘要偏简略需核实" |
-| 4 | 准确，所有内容无需外部验证即可确认正确 | "所有 URL 可访问，摘要与原文相符" |
-| 5 | 所有内容经验证正确，信息密度高 | "WebFetch 抽查 3 条均准确" |
-
-**维度 3：合规性（Compliance）— 1-5 分**
-
-| 分数 | 定义 | 判断依据示例 |
-|------|------|-------------|
-| 1 | 违反了 SKILL.md 中 3+ 条"常见错误"规则 | "标题被翻译了、板块被跳过、URL 是首页级" |
-| 2 | 违反了 1-2 条规则 | "标题被翻译（违反保留原文规则）" |
-| 3 | 基本合规，有 1 处轻微违规 | "1 个 URL 是首页级但标注了'链接暂缺'" |
-| 4 | 完全合规，遵循了所有明确规则 | "板块顺序正确、标题保留原文、URL 文章级" |
-| 5 | 合规 + 主动遵循了降级策略和 URL 质量规则 | "降级标记清晰、URL 经二次搜索获取" |
-
-**维度 4：可用性（Usability）— 1-5 分**
-
-| 分数 | 定义 | 判断依据示例 |
-|------|------|-------------|
-| 1 | 输出无法使用 | "Markdown 无法渲染，表格错乱" |
-| 2 | 可勉强阅读，需大量人工修正 | "需手动修正 5+ 个链接" |
-| 3 | 可正常阅读，部分内容需手动补充 | "3 个链接需手动搜索" |
-| 4 | 可直接使用，偶有瑕疵 | "1 个链接需手动复制而非直接可点击" |
-| 5 | 高质量输出，无需任何人工修正 | "格式完美、内容充实、链接全部有效" |
+4 维度概览：
+- **完整性（Completeness）**：输出是否包含 SKILL.md 要求的所有板块和内容
+- **准确性（Accuracy）**：内容的事实准确性和信息质量
+- **合规性（Compliance）**：是否遵循 SKILL.md 的规则（常见错误、URL 质量、降级策略）
+- **可用性（Usability）**：输出对目标用户是否可直接使用
 
 **评估流程**（关键规则）：
 
@@ -166,7 +140,7 @@ Claude 读 SKILL.md + 读输出文件，对照评估输出是否符合 SKILL.md 
 
 **批量模式**：对每个 case-* 用例独立评分，汇总后计算语义平均分。
 
-### 步骤 3：回归对比（可选，仅 --regress 或 --golden）
+### 步骤 4：回归对比（可选，仅 --regress 或 --golden）
 
 此步骤仅在指定 `--regress` 或 `--golden` 时执行。否则跳过，报告模板中"回归对比"板块填写"未启用"。
 
@@ -186,11 +160,11 @@ Claude 读 SKILL.md + 读输出文件，对照评估输出是否符合 SKILL.md 
 
 **批量模式**：对每个 case-* 用例的输出与 reference/ 目录中的参考输出做对比。
 
-### 步骤 4：聚合与生成评估报告
+### 步骤 5：聚合与生成评估报告
 
-使用 references/report-template.md 的模板结构，填充所有 `{PLACEHOLDER}` 变量。
+先 Read references/report-template.md 获取模板结构，然后填充所有 `{PLACEHOLDER}` 变量。
 
-**单用例模式**：生成一份评估报告 `evaluate-skill-report-{skill-name}-{日期}.md`
+**单用例模式**：生成一份评估报告 `evaluate-skill-report-{skill-name}-{DATE}.md`
 
 填充映射：
 
@@ -231,7 +205,7 @@ Claude 读 SKILL.md + 读输出文件，对照评估输出是否符合 SKILL.md 
 | `{COMMON_ISSUES}` | 出现在 ≥3 个用例中的共性问题 |
 | `{BATCH_IMPROVEMENT_SUGGESTIONS}` | 合并改进建议 |
 
-报告写入 Markdown 文件，命名为 `evaluate-skill-report-{skill-name}-{日期}.md`。
+报告写入 Markdown 文件，命名为 `evaluate-skill-report-{skill-name}-{DATE}.md`。
 
 读取生成的报告并呈现给用户。说明文件路径。
 
@@ -292,8 +266,8 @@ Claude 读 SKILL.md + 读输出文件，对照评估输出是否符合 SKILL.md 
 
 | 步骤 | 动作 | 工具 |
 |------|------|------|
-| 0. 定位 | Glob 查找 SKILL.md + 输出文件 | Glob, Read |
-| 1. 断言 | Read 输出文件 → 逐项 ✅/❌ | Read, Grep, Glob |
-| 2. 评分 | Read SKILL.md + 输出文件 → 4 维度 1-5 分 | Read |
-| 3. 回归（可选） | Read 参考输出 → 对比差异 | Read |
-| 4. 报告 | 填充 report-template.md → 写文件 | Read, Write |
+| 1. 定位 | Glob 查找 SKILL.md + 输出文件 | Glob, Read |
+| 2. 断言 | Read 输出文件 → 逐项 ✅/❌ | Read, Grep, Glob |
+| 3. 评分 | Read SKILL.md + 输出文件 → 4 维度 1-5 分 | Read |
+| 4. 回归（可选） | Read 参考输出 → 对比差异 | Read |
+| 5. 报告 | Read 模板 + 填充 → Write 报告文件 | Read, Write |
