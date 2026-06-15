@@ -25,6 +25,41 @@ pip install requests python-dateutil
 
 可选：设置 `GITHUB_TOKEN` 和 `SEMANTIC_SCHOLAR_API_KEY` 环境变量。
 
+### learn-domain（技术领域学习指南）
+
+为任意技术领域生成结构化学习指南，含概念依赖图、分级学习路径、资源推荐、实战项目建议和避坑指南。自动引用 research-landscape 报告的热点数据。
+
+**调用**：`/good-skills:learn-domain <话题> [--level beginner|intermediate] [--project <项目描述>] [--lang zh|en]`
+
+**5 步工作流**：
+1. 领域骨架（概念依赖图 + 术语对照 + 分级学习层级）— Claude 知识生成
+2. WebSearch 定向补充资源链接
+3. 引用 landscape 报告热点（如存在）
+4. 实战项目建议生成
+5. 渲染 Markdown 学习指南
+
+**前置条件**：无（纯 WebSearch + Claude 知识，不依赖 Python 脚本）
+
+### web-to-local-md（网站文档离线下载）
+
+将网站文档专区完整下载到本地 Markdown 文件，含图片和渲染后的 Mermaid 流程图，支持 Typora 等编辑器离线阅读。优先从 GitHub 下载源 `.md` 文件（质量远优于 HTML 转换），自动处理 VuePress/VitePress SPA 懒加载、Mermaid 图表渲染、CDN 图片下载和相对路径修正。
+
+**调用**：`/good-skills:web-to-local-md <网站URL> --github-repo OWNER/REPO --output-dir DIR --render-mermaid`
+
+**适用场景**：VuePress/VitePress 文档站、GitHub 开源项目文档、任何需要离线阅读的技术文档网站。
+
+**前置条件**：
+```bash
+# Python 3 必需
+# 可选：渲染 Mermaid 流程图为 PNG
+npm install -g @mermaid-js/mermaid-cli
+```
+
+**使用示例**：
+```
+/good-skills:web-to-local-md https://javaguide.cn/ai/ --github-repo Snailclimb/JavaGuide --output-dir ./downloaded --render-mermaid
+```
+
 ## 安装
 
 ### Claude Code
@@ -60,6 +95,11 @@ Codex CLI 没有插件系统，通过项目级 `AGENTS.md` 文件提供技能描
 /good-skills:research-landscape AI agent evaluation        # 评估领域
 /good-skills:research-landscape 微服务治理 --since 2026-05-01  # 微服务治理
 /good-skills:research-landscape safety --deep              # 安全深度扫描
+/good-skills:web-to-local-md https://javaguide.cn/ai/ --github-repo Snailclimb/JavaGuide --output-dir ./downloaded --render-mermaid  # 下载网站文档到本地
+/good-skills:learn-domain 可观测                          # 可观测性学习指南（自动判断层级）
+/good-skills:learn-domain AI agent --level beginner       # Agent 入门路径
+/good-skills:learn-domain Rust --project "写一个CLI工具"   # 反向推导Rust学习路径
+/good-skills:learn-domain Kubernetes --lang en            # 英文输出
 ```
 
 ### 定期扫描
@@ -83,19 +123,29 @@ good-skills/
 ├── README.md                           ← 项目入口
 ├── docs/                               ← spec、plan 等开发文档
 └── skills/
-│   └── research-landscape/
-│       ├── SKILL.md                    ← 技能定义（编排层）
-│       ├── references/
-│       │   ├── search-strategies.md    ← 搜索策略模板
-│       │   ├── source-guide.md         ← API 端点、仓库、速率限制
-│       │   └── report-template.md      ← 报告 Markdown 骨架
-│       └── scripts/
-│           ├── search_arxiv.py
-│           ├── search_semantic_scholar.py
-│           ├── fetch_otel_updates.py
-│           ├── fetch_openinference_updates.py
-│           ├── fetch_tool_releases.py
-│           └── generate_report.py
+    ├── research-landscape/
+    │   ├── SKILL.md                    ← 技能定义（编排层）
+    │   ├── references/
+    │   │   ├── search-strategies.md    ← 搜索策略模板
+    │   │   ├── source-guide.md         ← API 端点、仓库、速率限制
+    │   │   └── report-template.md      ← 报告 Markdown 骨架
+    │   └── scripts/
+    │       ├── search_arxiv.py
+    │       ├── search_semantic_scholar.py
+    │       ├── fetch_otel_updates.py
+    │       ├── fetch_openinference_updates.py
+    │       ├── fetch_tool_releases.py
+    │       └── generate_report.py
+    ├── learn-domain/
+    │   ├── SKILL.md                    ← 技能定义（编排层）
+    │   └── references/
+    │       └── report-template.md      ← 学习指南 Markdown 骨架
+    └── web-to-local-md/
+        ├── SKILL.md                    ← 技能定义（编排层）
+        ├── references/
+        │   └── common-issues.md        ← 常见问题与解决方案
+        └── scripts/
+            └── web_to_local_md.py      ← 核心下载/转换脚本
 ```
 
 ## 新增技能
