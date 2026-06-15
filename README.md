@@ -14,7 +14,7 @@
 
 | 参数 | 含义 | 默认值 | 示例 |
 |------|------|--------|------|
-| `<话题>` | **必填**。要扫描的技术领域，中文英文均可 | 无（不传则报错） | `可观测`、`AI agent evaluation`、`微服务治理` |
+| `<话题>`（位置参数） | **必填**。要扫描的技术领域，中文英文均可，直接写在命令后面 | 无（不传则报错） | `可观测`、`AI agent evaluation`、`微服务治理` |
 | `--since YYYY-MM-DD` | 只采集该日期之后的内容 | 今天往前推 30 天 | `--since 2026-05-01` |
 | `--deep` | 深度模式：每信源 5 条结果含完整摘要 | 广度模式：每信源 15 条结果但摘要更短 | `--deep` |
 
@@ -76,7 +76,7 @@ pip install requests python-dateutil
 
 | 参数 | 含义 | 默认值 | 示例 |
 |------|------|--------|------|
-| `<网站URL>` | **必填**。要下载的文档站点 URL | 无（不传则报错） | `https://javaguide.cn/ai/` |
+| `<网站URL>`（位置参数） | **必填**。要下载的文档站点 URL，直接写在命令后面，不需要 `--url` 前缀 | 无（不传则报错） | `https://javaguide.cn/ai/` |
 | `--github-repo OWNER/REPO` | **推荐必填**。文档的 GitHub 仓库。提供后会从 GitHub 下载源 `.md` 文件（质量远优于 HTML 转换） | 无（缺少则走 HTML 转换策略，质量较低） | `--github-repo Snailclimb/JavaGuide` |
 | `--output-dir DIR` | 输出目录 | `./downloaded` | `--output-dir ./downloaded-docs` |
 | `--render-mermaid` | 将 Mermaid 代码块渲染为 PNG 图片 | 不渲染（保留 Mermaid 代码块原文） | `--render-mermaid` |
@@ -106,7 +106,7 @@ npm install -g @mermaid-js/mermaid-cli
 
 | 参数 | 含义 | 默认值 | 示例 |
 |------|------|--------|------|
-| `<skill-name>` | **必填**。要评估的 skill 名称 | 无（不传则报错） | `research-landscape`、`web-to-local-md` |
+| `<skill-name>`（位置参数） | **必填**。要评估的 skill 名称，直接写在命令后面 | 无（不传则报错） | `research-landscape`、`web-to-local-md` |
 | `--input <路径>` | 指定已有输出文件路径（事后评估） | 当前目录自动查找匹配文件 | `--input ./downloaded` |
 | `--run <skill参数>` | 先执行目标 skill 再评估其输出（一体化模式） | 不执行，只评估已有输出 | `--run "可观测 --since 2026-05-01"` |
 | `--golden <路径>` | 批量评估黄金数据集目录 | 无（单用例模式） | `--golden ./golden/web-to-local-md/` |
