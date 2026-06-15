@@ -52,7 +52,7 @@ digraph decision {
 | 2. Get source files | curl GitHub raw URLs | Download original `.md` files (best quality) |
 | 3. Download images | curl oss/javaguide CDN URLs | Save all PNG/SVG/JPEG to `images/` dir |
 | 4. Render Mermaid | mmdc CLI | Convert `\`\`\`mermaid` blocks to PNG images |
-| 5. Fix paths | Python script | Change `images/` → `../images/` for Typora |
+| 5. Fix paths | Python script | Replace CDN image URLs with local relative paths. Files in subdirectories use `../images/xxx.png`; files in root directory use `images/xxx.png` |
 | 6. Clean up | Delete temp files | Remove HTML files, scripts, source dirs |
 
 ## Implementation
@@ -70,8 +70,8 @@ python ${CLAUDE_PLUGIN_ROOT}/scripts/web_to_local_md.py --url "https://example.c
 | Mistake | What happens | Fix |
 |---------|-------------|-----|
 | Using regex HTML→MD conversion | Empty headers, corrupted image URLs, lost tables, duplicated content | **Always prefer GitHub source .md files** |
-| Leaving `\`\`\`mermaid` code blocks | Users see raw `flowchart LR` code instead of diagrams | Render with mmdc to PNG, replace block with `![](../images/xxx.png)` |
-| Image path = `images/xxx.png` | Typora looks in `subdir/images/` (wrong) | Use `../images/xxx.png` (relative to parent) |
+| Leaving `\`\`\`mermaid` code blocks | Users see raw `flowchart LR` code instead of diagrams | Render with mmdc to PNG, replace block with image reference (uses `../images/` in subdirs, `images/` in root) |
+| Image path = `images/xxx.png` (when file is in a subdirectory) | Typora looks in `subdir/images/` (wrong) | Use `../images/xxx.png` (relative to parent). When file is in root directory, use `images/xxx.png` instead |
 | Curl downloads SPA HTML only | VuePress pages return skeleton (2551px height), no content | Use GitHub raw `.md` files instead |
 | VuePress anchor-only headers | `<h2><a class="header-anchor"><span>Title</span></a></h2>` — removing `<a>` loses title text | Unwrap anchor, keep `<span>` text |
 | mmdc not found in Python subprocess | `[WinError 2]` on Windows | Use full path: `npm prefix -g` + `/mmdc.cmd` |

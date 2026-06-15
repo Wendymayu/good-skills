@@ -187,7 +187,7 @@ def render_mermaid_block(code, output_path, mmdc_path):
             os.unlink(tmp_mmd)
 
 
-def render_all_mermaid(content, filename, img_dir, mmdc_path):
+def render_all_mermaid(content, filename, img_dir, mmdc_path, is_subdirectory=False):
     """Find all mermaid code blocks, render to PNG, replace with image refs."""
     blocks = []
     pattern = r'```mermaid\n(.*?)```'
@@ -213,7 +213,8 @@ def render_all_mermaid(content, filename, img_dir, mmdc_path):
 
         success = render_mermaid_block(block['code'], img_path, mmdc_path)
         if success:
-            img_ref = f"![流程图 {i + 1}](../images/{img_filename})"
+            img_prefix = '../images/' if is_subdirectory else 'images/'
+            img_ref = f"![流程图 {i + 1}]({img_prefix}{img_filename})"
             new_content = new_content[:block['start']] + img_ref + new_content[block['end']:]
             rendered += 1
             print(f"    Mermaid block {i + 1}: rendered to {img_filename}")
@@ -319,7 +320,7 @@ def main():
             content = fix_image_paths(content, is_subdir)
             # Render mermaid if requested
             if mmdc_path and '```mermaid' in content:
-                content, rendered = render_all_mermaid(content, filename, img_dir, mmdc_path)
+                content, rendered = render_all_mermaid(content, filename, img_dir, mmdc_path, is_subdir)
                 print(f"    Mermaid: {rendered} blocks rendered")
 
             with open(md_path, 'w', encoding='utf-8') as f:
