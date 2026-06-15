@@ -60,6 +60,18 @@ npm install -g @mermaid-js/mermaid-cli
 /good-skills:web-to-local-md https://javaguide.cn/ai/ --github-repo Snailclimb/JavaGuide --output-dir ./downloaded --render-mermaid
 ```
 
+### evaluate-skill（Skill 质量评估）
+
+评估任意 good-skills skill 的输出质量。三层评估：通用结构断言 → SKILL.md 合规性（LLM-as-Judge）→ 可选回归对比。SKILL.md 本身就是评估 rubric，新增 skill 时评估自动生效，零额外代码。支持批量评估和综合报告。
+
+**调用**：`/good-skills:evaluate-skill <skill-name> [--input <路径>] [--run <skill参数>] [--golden <路径>] [--regress <参考路径>] [--verbose]`
+
+**适用场景**：Skill 变更后验证、新 Skill 首次验收、定期质量检查、多版本对比。
+
+**局限**：黑盒评估（无中间追踪）；LLM-as-Judge ±1 波动；非文件输出类 skill 不适用。
+
+**前置条件**：无（纯 Claude 编排，不依赖 Python 评估脚本）
+
 ## 安装
 
 ### Claude Code
@@ -100,6 +112,10 @@ Codex CLI 没有插件系统，通过项目级 `AGENTS.md` 文件提供技能描
 /good-skills:learn-domain AI agent --level beginner       # Agent 入门路径
 /good-skills:learn-domain Rust --project "写一个CLI工具"   # 反向推导Rust学习路径
 /good-skills:learn-domain Kubernetes --lang en            # 英文输出
+/good-skills:evaluate-skill research-landscape --input ./research-landscape-report-*.md  # 评估已有报告
+/good-skills:evaluate-skill web-to-local-md --input ./downloaded                         # 评估下载输出
+/good-skills:evaluate-skill research-landscape --run "可观测"                             # 先执行再评估
+/good-skills:evaluate-skill web-to-local-md --golden ./golden/web-to-local-md/            # 批量评估
 ```
 
 ### 定期扫描
@@ -140,6 +156,12 @@ good-skills/
     │   ├── SKILL.md                    ← 技能定义（编排层）
     │   └── references/
     │       └── report-template.md      ← 学习指南 Markdown 骨架
+    ├── evaluate-skill/
+    │   ├── SKILL.md                    ← 技能定义（编排层）
+    │   └── references/
+    │       ├── structural-checks.md    ← 通用结构断言清单
+    │       ├── scoring-rubric.md       ← 4 维度评分标准
+    │       └── report-template.md      ← 评估报告模板
     └── web-to-local-md/
         ├── SKILL.md                    ← 技能定义（编排层）
         ├── references/

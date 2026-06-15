@@ -34,6 +34,18 @@
 
 **前置条件**：Python 3；可选 `npm install -g @mermaid-js/mermaid-cli`（渲染 Mermaid 图表）
 
+### evaluate-skill（Skill 质量评估）
+
+评估任意 good-skills skill 的输出质量。SKILL.md 本身就是评估 rubric——新增 skill 时评估自动生效，零额外代码。三层评估：通用结构断言 → SKILL.md 合规性（LLM-as-Judge）→ 可选回归对比。支持批量评估（黄金数据集）和综合报告。
+
+**调用**：`/good-skills:evaluate-skill <skill-name> [--input <路径>] [--run <skill参数>] [--golden <路径>] [--regress <参考路径>] [--verbose]`
+
+**适用场景**：Skill 变更后验证、新 Skill 首次验收、定期质量检查、多版本对比。
+
+**局限**：黑盒评估无中间过程追踪；LLM-as-Judge 主观性 ±1 波动；非文件输出类 skill 不适用。
+
+**前置条件**：无（纯 Claude 编排，不依赖 Python 评估脚本）
+
 1. 创建 `skills/<技能名>/SKILL.md`（含 YAML frontmatter：name、description、allowed-tools）
 2. 添加辅助文件（references/、scripts/）按需
 3. 更新本文件加入新技能描述
