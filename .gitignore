@@ -8,3 +8,6 @@ learn-domain-guide-*.md
 research-landscape-report-*.md
 evaluate-skill-report-*.md
 downloaded/
+
+# Data directory (never commit)
+data/
