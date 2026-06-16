@@ -122,12 +122,24 @@ def download_image(url, save_path):
         return 0
 
 
-def fix_image_paths(content, is_subdirectory):
+def get_image_prefix(subdir):
+    """Calculate relative path prefix from a subdirectory to the images/ directory.
+
+    For root-level files: images/
+    For one level deep (e.g. 'ai'): ../images/
+    For two levels deep (e.g. 'ai/llm-basis'): ../../images/
+    """
+    if not subdir:
+        return 'images/'
+    depth = subdir.count('/')
+    return '../' * (depth + 1) + 'images/'
+
+def fix_image_paths(content, subdir):
     """Replace remote image URLs with local relative paths."""
+    prefix = get_image_prefix(subdir)
     def replace_url(match):
         url = match.group(0)
         filename = os.path.basename(url.split('?')[0])
-        prefix = '../images/' if is_subdirectory else 'images/'
         return prefix + filename
 
     content = re.sub(
@@ -187,7 +199,7 @@ def render_mermaid_block(code, output_path, mmdc_path):
             os.unlink(tmp_mmd)
 
 
-def render_all_mermaid(content, filename, img_dir, mmdc_path, is_subdirectory=False):
+def render_all_mermaid(content, filename, img_dir, mmdc_path, subdir=''):
     """Find all mermaid code blocks, render to PNG, replace with image refs."""
     blocks = []
     pattern = r'```mermaid\n(.*?)```'
@@ -213,7 +225,7 @@ def render_all_mermaid(content, filename, img_dir, mmdc_path, is_subdirectory=Fa
 
         success = render_mermaid_block(block['code'], img_path, mmdc_path)
         if success:
-            img_prefix = '../images/' if is_subdirectory else 'images/'
+            img_prefix = get_image_prefix(subdir)
             img_ref = f"![流程图 {i + 1}]({img_prefix}{img_filename})"
             new_content = new_content[:block['start']] + img_ref + new_content[block['end']:]
             rendered += 1
@@ -317,10 +329,10 @@ def main():
             # Collect remote image URLs
             all_remote_images.update(extract_image_urls(content))
             # Fix image paths for local viewing
-            content = fix_image_paths(content, is_subdir)
+            content = fix_image_paths(content, subdir)
             # Render mermaid if requested
             if mmdc_path and '```mermaid' in content:
-                content, rendered = render_all_mermaid(content, filename, img_dir, mmdc_path, is_subdir)
+                content, rendered = render_all_mermaid(content, filename, img_dir, mmdc_path, subdir)
                 print(f"    Mermaid: {rendered} blocks rendered")
 
             with open(md_path, 'w', encoding='utf-8') as f:
