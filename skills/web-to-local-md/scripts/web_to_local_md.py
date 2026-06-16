@@ -284,6 +284,27 @@ def main():
         pages = discover_pages(base_url, section_prefix, html)
         print(f"  Found {len(pages)} pages")
 
+        # Fallback: if no pages discovered and URL points to a specific page, download it directly
+        if len(pages) == 0 and args.github_repo and not args.url.endswith('/'):
+            # URL like https://javaguide.cn/ai/llm-basis/llm-operation-mechanism.html
+            url_path = args.url.replace('https://', '').replace('http://', '').split('?')[0]
+            # Remove domain, keep path
+            domain = url_path.split('/')[0]
+            page_path = '/' + '/'.join(url_path.split('/')[1:])
+            # Convert .html to .md path
+            md_path = page_path.replace('.html', '.md')
+            # Derive subdir and filename from path
+            path_parts = md_path.strip('/').split('/')
+            if len(path_parts) > 1:
+                subdir = '/'.join(path_parts[:-1])
+                filename = path_parts[-1].replace('.md', '')
+            else:
+                subdir = ''
+                filename = path_parts[-1].replace('.md', '')
+            pages = [{'subdir': subdir, 'filename': filename, 'path': md_path, 'title': filename}]
+            print(f"  Fallback: single-page download → {md_path}")
+
+
     # Step 2: Download source files
     print(f"\nStep 2: Downloading {len(pages)} pages...")
     total_ok = 0
