@@ -66,9 +66,9 @@ def discover_pages(base_url, section_prefix, html_content):
 
 # ─── GitHub Source Download ───
 
-def download_github_md(github_repo, source_path, save_path):
+def download_github_md(github_repo, source_path, save_path, branch='main'):
     """Download a markdown file from GitHub raw URL."""
-    url = f"https://raw.githubusercontent.com/{github_repo}/main/{source_path}"
+    url = f"https://raw.githubusercontent.com/{github_repo}/{branch}/{source_path}"
     try:
         req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
         with urllib.request.urlopen(req, timeout=30) as resp:
@@ -242,6 +242,7 @@ def main():
     parser = argparse.ArgumentParser(description='Download website to local markdown')
     parser.add_argument('--url', required=True, help='Website section URL (e.g. https://javaguide.cn/ai/)')
     parser.add_argument('--github-repo', default=None, help='GitHub repo with source .md files (e.g. Snailclimb/JavaGuide)')
+    parser.add_argument('--github-branch', default='main', help='GitHub branch for source files (default: main)')
     parser.add_argument('--github-docs-path', default='docs', help='Path prefix in GitHub repo for doc files (default: docs)')
     parser.add_argument('--output-dir', required=True, help='Local output directory')
     parser.add_argument('--render-mermaid', action='store_true', help='Render mermaid blocks to PNG using mmdc')
@@ -284,15 +285,21 @@ def main():
         pages = discover_pages(base_url, section_prefix, html)
         print(f"  Found {len(pages)} pages")
 
-        # Fallback: if no pages discovered and URL points to a specific page, download it directly
-        if len(pages) == 0 and args.github_repo and not args.url.endswith('/'):
-            # URL like https://javaguide.cn/ai/llm-basis/llm-operation-mechanism.html
+        # Fallback: if no pages discovered, derive page from URL path and download directly
+        if len(pages) == 0 and args.github_repo:
+            # Handles both:
+            #   https://javaguide.cn/ai/llm-basis/llm-operation-mechanism.html
+            #   https://pinia.vuejs.org/core-concepts/  (trailing-slash → core-concepts.md)
             url_path = args.url.replace('https://', '').replace('http://', '').split('?')[0]
             # Remove domain, keep path
             domain = url_path.split('/')[0]
             page_path = '/' + '/'.join(url_path.split('/')[1:])
-            # Convert .html to .md path
+            # Strip trailing slash (VitePress /core-concepts/ → /core-concepts)
+            page_path = page_path.rstrip('/')
+            # Convert .html to .md path; also append .md if path has no extension (VitePress-style)
             md_path = page_path.replace('.html', '.md')
+            if not md_path.endswith('.md'):
+                md_path += '.md'
             # Derive subdir and filename from path
             path_parts = md_path.strip('/').split('/')
             if len(path_parts) > 1:
@@ -343,7 +350,13 @@ def main():
             source_path = path.replace('.html', '.md')
             if not source_path.startswith(args.github_docs_path):
                 source_path = f"{args.github_docs_path}{source_path}"
-            content = download_github_md(args.github_repo, source_path, md_path)
+            content = download_github_md(args.github_repo, source_path, md_path, args.github_branch)
+
+            # Fallback: for trailing-slash URLs (VitePress/VuePress convention),
+            # /section/ maps to section/index.md, not section.md
+            if content is None and source_path.endswith('.md'):
+                index_path = source_path.replace('.md', '/index.md')
+                content = download_github_md(args.github_repo, index_path, md_path, args.github_branch)
 
         if content:
             content = strip_frontmatter(content)
