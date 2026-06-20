@@ -6,7 +6,7 @@ import os
 # Add scripts directory to path for import
 sys.path.insert(0, os.path.dirname(__file__))
 
-from web_to_local_md import extract_main_content, strip_noise, fetch_url, html_to_markdown
+from web_to_local_md import extract_main_content, strip_noise, fetch_url, html_to_markdown, extract_image_urls, fix_image_paths
 
 # Helper to generate sufficiently long content for threshold tests
 # Must exceed 200 chars text AND 500 chars HTML
@@ -166,3 +166,44 @@ def test_html_to_markdown_short():
     """Very short HTML should return None."""
     md = html_to_markdown('<p>Hi</p>')
     assert md is None
+
+
+# ─── Image URL extraction tests ───
+
+def test_extract_generic_cdn_images():
+    """Should extract images from any CDN domain, not just oss.*."""
+    md = 'See ![diagram](https://cdn.example.com/images/diagram.png) and ![logo](https://static.site.com/assets/logo.svg)'
+    urls = extract_image_urls(md)
+    assert 'https://cdn.example.com/images/diagram.png' in urls
+    assert 'https://static.site.com/assets/logo.svg' in urls
+
+def test_extract_aws_s3_images():
+    """Should extract AWS S3 hosted images."""
+    md = '![arch](https://docs.aws.amazon.com/images/arch-diagram.png)'
+    urls = extract_image_urls(md)
+    assert 'https://docs.aws.amazon.com/images/arch-diagram.png' in urls
+
+def test_no_local_paths():
+    """Should NOT extract local/relative paths."""
+    md = '![local](images/local.png) and ![relative](../images/relative.svg)'
+    urls = extract_image_urls(md)
+    assert len(urls) == 0
+
+def test_no_non_image_urls():
+    """Should NOT extract non-image URLs like .html pages."""
+    md = 'Visit [link](https://example.com/page.html) and [api](https://api.example.com/v1/data)'
+    urls = extract_image_urls(md)
+    assert len(urls) == 0
+
+def test_fix_image_paths_generic():
+    """Should replace any remote image URL with local path."""
+    md = '![img](https://cdn.example.com/images/photo.png)'
+    result = fix_image_paths(md, '')
+    assert 'images/photo.png' in result
+    assert 'cdn.example.com' not in result
+
+def test_fix_image_paths_subdir():
+    """Should use ../images/ prefix for subdir content."""
+    md = '![img](https://docs.aws.amazon.com/assets/diagram.png)'
+    result = fix_image_paths(md, 'agent')
+    assert '../images/diagram.png' in result

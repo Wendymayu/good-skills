@@ -277,16 +277,13 @@ def html_to_markdown(html):
 # ─── Image Handling ───
 
 def extract_image_urls(content):
-    """Extract all remote image URLs from content."""
+    """Extract all remote image URLs from content (Markdown or HTML)."""
     urls = set()
-    # oss.javaguide.cn or generic CDN patterns
-    patterns = [
-        r'https://oss\.[a-zA-Z0-9_-]+\.[a-zA-Z]{2,}/[^\s)\"]+\.(?:png|jpg|jpeg|gif|svg|webp)',
-        r'https://[a-zA-Z0-9._-]+\.[a-zA-Z]{2,}/[^\s)\"]+\.(?:png|jpg|jpeg|gif|svg|webp)',
-    ]
-    for pattern in patterns:
-        for url in re.findall(pattern, content):
-            urls.add(url)
+    # Match any https:// URL ending in an image extension
+    # Covers CDN, docs sites, static sites, etc.
+    pattern = r'https://[a-zA-Z0-9._/-]+/[a-zA-Z0-9._-]+\.(?:png|jpg|jpeg|gif|svg|webp|avif)(?:\?[a-zA-Z0-9=&_-]*)?'
+    for url in re.findall(pattern, content):
+        urls.add(url)
     return urls
 
 
@@ -324,13 +321,16 @@ def fix_image_paths(content, subdir):
         filename = os.path.basename(url.split('?')[0])
         return prefix + filename
 
+    # Replace all remote image URLs (any domain)
     content = re.sub(
-        r'https://oss\.[a-zA-Z0-9_-]+\.[a-zA-Z]{2,}/[^\s)\"]+\.(?:png|jpg|jpeg|gif|svg|webp)',
+        r'https://[a-zA-Z0-9._/-]+/[a-zA-Z0-9._-]+\.(?:png|jpg|jpeg|gif|svg|webp|avif)(?:\?[a-zA-Z0-9=&_-]*)?',
         replace_url, content
     )
     # Fix %20 in filenames
     content = content.replace('%20.png', '.png')
     content = content.replace('%20.svg', '.svg')
+    content = content.replace('%20.jpg', '.jpg')
+    content = content.replace('%20.jpeg', '.jpeg')
     return content
 
 
