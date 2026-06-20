@@ -6,7 +6,7 @@ import os
 # Add scripts directory to path for import
 sys.path.insert(0, os.path.dirname(__file__))
 
-from web_to_local_md import extract_main_content, strip_noise, fetch_url
+from web_to_local_md import extract_main_content, strip_noise, fetch_url, html_to_markdown
 
 # Helper to generate sufficiently long content for threshold tests
 # Must exceed 200 chars text AND 500 chars HTML
@@ -132,3 +132,37 @@ def test_fetch_url_404():
     """fetch_url should return None for 404 URLs."""
     result = fetch_url('https://httpbin.org/status/404')
     assert result is None
+
+
+def test_html_to_markdown_basic():
+    """Convert simple HTML to Markdown."""
+    html = '<html><body><article><h1>Title</h1><p>' + LONG_TEXT + '</p><p>' + EXTRA_TEXT + '</p><ul><li>Item 1</li><li>Item 2</li></ul></article></body></html>'
+    md = html_to_markdown(html)
+    assert md is not None
+    assert '# Title' in md
+    assert 'Item 1' in md
+
+def test_html_to_markdown_with_code():
+    """Convert HTML with code blocks to Markdown."""
+    html = '<html><body><article><p>Example code follows:</p><pre><code>print("hello world")</code></pre><p>' + LONG_TEXT + '</p></article></body></html>'
+    md = html_to_markdown(html)
+    assert md is not None
+    assert '```' in md
+    assert 'print' in md
+
+def test_html_to_markdown_with_links():
+    """Convert HTML with links to Markdown."""
+    html = '<html><body><article><p>Read the <a href="https://example.com">docs</a> for details.</p><p>' + LONG_TEXT + '</p></article></body></html>'
+    md = html_to_markdown(html)
+    assert md is not None
+    assert '[docs](https://example.com)' in md
+
+def test_html_to_markdown_empty():
+    """Empty HTML should return None."""
+    md = html_to_markdown('')
+    assert md is None
+
+def test_html_to_markdown_short():
+    """Very short HTML should return None."""
+    md = html_to_markdown('<p>Hi</p>')
+    assert md is None

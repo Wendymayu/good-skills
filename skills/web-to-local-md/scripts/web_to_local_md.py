@@ -242,6 +242,38 @@ def strip_noise(html):
     return str(soup)
 
 
+def html_to_markdown(html):
+    """Convert HTML content to Markdown using extract + strip_noise + markdownify.
+
+    Returns Markdown text on success, None if content is too short/empty.
+    """
+    from markdownify import markdownify as md_conv
+
+    # Step 1: Extract main content
+    content_html = extract_main_content(html)
+    if content_html is None:
+        return None
+
+    # Step 2: Strip noise
+    clean_html = strip_noise(content_html)
+
+    # Step 3: Convert to Markdown
+    markdown_text = md_conv(clean_html, heading_style="ATX", bullets="-")
+
+    # Step 4: Clean up excessive whitespace
+    # Remove 3+ consecutive blank lines → 2 blank lines
+    markdown_text = re.sub(r'\n{4,}', '\n\n\n', markdown_text)
+    # Remove trailing whitespace on each line
+    markdown_text = re.sub(r' +\n', '\n', markdown_text)
+
+    # Step 5: Check minimum content length
+    plain_text = re.sub(r'[#*\[\]\(\)!>`\n]', '', markdown_text)
+    if len(plain_text.strip()) < 200:
+        return None
+
+    return markdown_text.strip()
+
+
 # ─── Image Handling ───
 
 def extract_image_urls(content):
@@ -412,6 +444,8 @@ def main():
     print()
 
     # Load page definitions
+    strategy_b_used = False
+    all_remote_images = set()
     if args.pages:
         with open(args.pages, 'r', encoding='utf-8') as f:
             pages = json.load(f)
@@ -432,7 +466,9 @@ def main():
         pages = discover_pages(base_url, section_prefix, html)
         print(f"  Found {len(pages)} pages")
 
-        # Fallback: if no pages discovered, derive page from URL path and download directly
+        strategy_b_used = False
+
+        # Fallback A: single-page GitHub source download
         if len(pages) == 0 and args.github_repo:
             # Handles both:
             #   https://javaguide.cn/ai/llm-basis/llm-operation-mechanism.html
@@ -456,73 +492,92 @@ def main():
                 subdir = ''
                 filename = path_parts[-1].replace('.md', '')
             pages = [{'subdir': subdir, 'filename': filename, 'path': md_path, 'title': filename}]
-            print(f"  Fallback: single-page download → {md_path}")
+            print(f"  Fallback A: single-page GitHub download → {md_path}")
+
+        # Fallback B: direct HTML extraction (Strategy B) when no sidebar pages and no GitHub source
+        if len(pages) == 0 and not args.github_repo:
+            print("  No sidebar pages found. Trying Strategy B: direct HTML extraction...")
+            strategy_b_md = html_to_markdown(html)
+            if strategy_b_md:
+                filename = 'index'
+                md_save_path = os.path.join(output_dir, f"{filename}.md")
+                strategy_b_used = True
+                all_remote_images.update(extract_image_urls(strategy_b_md))
+                strategy_b_md = fix_image_paths(strategy_b_md, '')
+                mmdc_path = find_mmdc_path() if args.render_mermaid else None
+                if mmdc_path and '```mermaid' in strategy_b_md:
+                    strategy_b_md, rendered = render_all_mermaid(strategy_b_md, filename, img_dir, mmdc_path)
+                    print(f"    Mermaid: {rendered} blocks rendered")
+                with open(md_save_path, 'w', encoding='utf-8') as f:
+                    f.write(strategy_b_md)
+                total_ok = 1
+                print(f"    Strategy B OK: {len(strategy_b_md)} chars")
+            else:
+                print("  Strategy B failed: no meaningful content extracted")
 
 
-    # Step 2: Download source files
-    print(f"\nStep 2: Downloading {len(pages)} pages...")
+    # Step 2: Download source files (only if not already handled by Strategy B)
     total_ok = 0
     total_fail = 0
-    all_remote_images = set()
     mmdc_path = find_mmdc_path() if args.render_mermaid else None
 
-    if mmdc_path:
-        print(f"  mmdc found: {mmdc_path}")
-    elif args.render_mermaid:
-        print("  WARNING: mmdc not found. Install: npm install -g @mermaid-js/mermaid-cli")
+    if not strategy_b_used and pages:
+        print(f"\nStep 2: Downloading {len(pages)} pages...")
 
-    for page in pages:
-        subdir = page.get('subdir', '')
-        filename = page.get('filename', '')
-        path = page.get('path', '')
-        title = page.get('title', '')
+        if mmdc_path:
+            print(f"  mmdc found: {mmdc_path}")
+        elif args.render_mermaid:
+            print("  WARNING: mmdc not found. Install: npm install -g @mermaid-js/mermaid-cli")
 
-        # Create subdirectory
-        if subdir:
-            save_dir = os.path.join(output_dir, subdir)
-            os.makedirs(save_dir, exist_ok=True)
-            md_path = os.path.join(save_dir, f"{filename}.md")
-            is_subdir = True
-        else:
-            md_path = os.path.join(output_dir, f"{filename}.md")
-            is_subdir = False
+        for page in pages:
+            subdir = page.get('subdir', '')
+            filename = page.get('filename', '')
+            path = page.get('path', '')
+            title = page.get('title', '')
 
-        print(f"  [{total_ok + 1}] {title}")
+            # Create subdirectory
+            if subdir:
+                save_dir = os.path.join(output_dir, subdir)
+                os.makedirs(save_dir, exist_ok=True)
+                md_path = os.path.join(save_dir, f"{filename}.md")
+            else:
+                md_path = os.path.join(output_dir, f"{filename}.md")
 
-        # Prefer GitHub source
-        content = None
-        if args.github_repo:
-            # Derive GitHub source path
-            # path like /ai/agent/mcp.html -> docs/ai/agent/mcp.md
-            source_path = path.replace('.html', '.md')
-            if not source_path.startswith(args.github_docs_path):
-                source_path = f"{args.github_docs_path}{source_path}"
-            content = download_github_md(args.github_repo, source_path, md_path, args.github_branch)
+            print(f"  [{total_ok + 1}] {title}")
 
-            # Fallback: for trailing-slash URLs (VitePress/VuePress convention),
-            # /section/ maps to section/index.md, not section.md
-            if content is None and source_path.endswith('.md'):
-                index_path = source_path.replace('.md', '/index.md')
-                content = download_github_md(args.github_repo, index_path, md_path, args.github_branch)
+            # Prefer GitHub source
+            content = None
+            if args.github_repo:
+                # Derive GitHub source path
+                source_path = path.replace('.html', '.md')
+                if not source_path.startswith(args.github_docs_path):
+                    source_path = f"{args.github_docs_path}{source_path}"
+                content = download_github_md(args.github_repo, source_path, md_path, args.github_branch)
 
-        if content:
-            content = strip_frontmatter(content)
-            # Collect remote image URLs
-            all_remote_images.update(extract_image_urls(content))
-            # Fix image paths for local viewing
-            content = fix_image_paths(content, subdir)
-            # Render mermaid if requested
-            if mmdc_path and '```mermaid' in content:
-                content, rendered = render_all_mermaid(content, filename, img_dir, mmdc_path, subdir)
-                print(f"    Mermaid: {rendered} blocks rendered")
+                # Fallback: for trailing-slash URLs (VitePress/VuePress convention),
+                # /section/ maps to section/index.md, not section.md
+                if content is None and source_path.endswith('.md'):
+                    index_path = source_path.replace('.md', '/index.md')
+                    content = download_github_md(args.github_repo, index_path, md_path, args.github_branch)
 
-            with open(md_path, 'w', encoding='utf-8') as f:
-                f.write(content)
-            total_ok += 1
-            print(f"    OK: {len(content)} chars")
-        else:
-            total_fail += 1
-            print(f"    FAILED")
+            if content:
+                content = strip_frontmatter(content)
+                # Collect remote image URLs
+                all_remote_images.update(extract_image_urls(content))
+                # Fix image paths for local viewing
+                content = fix_image_paths(content, subdir)
+                # Render mermaid if requested
+                if mmdc_path and '```mermaid' in content:
+                    content, rendered = render_all_mermaid(content, filename, img_dir, mmdc_path, subdir)
+                    print(f"    Mermaid: {rendered} blocks rendered")
+
+                with open(md_path, 'w', encoding='utf-8') as f:
+                    f.write(content)
+                total_ok += 1
+                print(f"    OK: {len(content)} chars")
+            else:
+                total_fail += 1
+                print(f"    FAILED")
 
     # Step 3: Download all images
     print(f"\nStep 3: Downloading {len(all_remote_images)} images...")
