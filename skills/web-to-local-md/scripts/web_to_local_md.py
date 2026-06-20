@@ -90,6 +90,73 @@ def strip_frontmatter(content):
     return content
 
 
+# ─── Content Extraction (Strategy B) ───
+
+def extract_main_content(html):
+    """Extract the main content from HTML using CSS selector heuristics.
+
+    Returns the inner HTML of the best content container found,
+    or None if no meaningful content can be extracted.
+    """
+    from bs4 import BeautifulSoup
+
+    if not html or len(html) < 100:
+        return None
+
+    soup = BeautifulSoup(html, 'html.parser')
+
+    # Priority-ordered selector chain for known content containers
+    selectors = [
+        # Semantic HTML5
+        'article',
+        '[role="main"]',
+        'main',
+        # Common doc site patterns
+        '.article-content',
+        '.post-content',
+        '.main-content',
+        '.content-body',
+        '.documentation',
+        '.doc-content',
+        '#content',
+        '#main-content',
+        # Chinese tech blog patterns
+        '#cnblogs_post_body',          # 博客园
+        '.article__content',           # SegmentFault
+        '#article-content',            # 阿里云开发者社区
+        '.topic-richtext',             # 知乎专栏
+        '.Post-RichTextContainer',     # 知乎专栏新版
+        # Cloud/docs patterns
+        '.awsui-text-container',       # AWS docs
+        '.content',                    # Generic fallback
+    ]
+
+    for sel in selectors:
+        elements = soup.select(sel)
+        for el in elements:
+            text = el.get_text(strip=True)
+            # Must have substantial content (>40 chars of actual text)
+            if len(text) > 40:
+                return str(el)
+
+    # Fallback: use <body> but strip noise first
+    body = soup.find('body')
+    if body:
+        # Remove known noise elements
+        for tag in body.find_all(['nav', 'header', 'footer', 'aside']):
+            tag.decompose()
+        for tag in body.find_all(class_=re.compile(r'sidebar|menu|nav|breadcrumb|cookie|ad|banner|promo|share|comment|footer|header')):
+            tag.decompose()
+        for tag in body.find_all(id=re.compile(r'sidebar|nav|header|footer|menu|comment')):
+            tag.decompose()
+
+        text = body.get_text(strip=True)
+        if len(text) > 40:
+            return str(body)
+
+    return None
+
+
 # ─── Image Handling ───
 
 def extract_image_urls(content):
