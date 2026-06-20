@@ -6,7 +6,7 @@ import os
 # Add scripts directory to path for import
 sys.path.insert(0, os.path.dirname(__file__))
 
-from web_to_local_md import extract_main_content, strip_noise
+from web_to_local_md import extract_main_content, strip_noise, fetch_url
 
 # Helper to generate sufficiently long content for threshold tests
 # Must exceed 200 chars text AND 500 chars HTML
@@ -120,3 +120,15 @@ def test_preserve_code_blocks():
     result = strip_noise(html)
     assert 'def hello()' in result
     assert 'Text paragraph' in result
+
+
+def test_fetch_url_success():
+    """fetch_url should return HTML for a valid URL."""
+    result = fetch_url('https://httpbin.org/html')
+    assert result is not None
+    assert len(result) > 100
+
+def test_fetch_url_404():
+    """fetch_url should return None for 404 URLs."""
+    result = fetch_url('https://httpbin.org/status/404')
+    assert result is None

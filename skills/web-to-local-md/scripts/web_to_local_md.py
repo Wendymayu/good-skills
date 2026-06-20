@@ -21,8 +21,38 @@ import sys
 import json
 import subprocess
 import tempfile
-import urllib.request
+import requests as req_lib
 from html.parser import HTMLParser
+
+
+# ─── HTTP Fetching ───
+
+DEFAULT_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.9,zh-CN;q=0.8,zh;q=0.7',
+    'Accept-Encoding': 'gzip, deflate',
+    'Connection': 'keep-alive',
+}
+
+def fetch_url(url, headers=None, timeout=15):
+    """Fetch a URL with enhanced headers and error handling.
+
+    Returns HTML text on success, None on failure (404, 403, timeout, etc).
+    """
+    h = headers or DEFAULT_HEADERS
+    try:
+        r = req_lib.get(url, headers=h, timeout=timeout, allow_redirects=True)
+        if r.status_code == 200:
+            return r.text
+        print(f"  HTTP {r.status_code} for {url}")
+        return None
+    except req_lib.exceptions.Timeout:
+        print(f"  Timeout fetching {url}")
+        return None
+    except req_lib.exceptions.RequestException as e:
+        print(f"  Request error: {e}")
+        return None
 
 
 # ─── Page Discovery ───
@@ -70,13 +100,14 @@ def download_github_md(github_repo, source_path, save_path, branch='main'):
     """Download a markdown file from GitHub raw URL."""
     url = f"https://raw.githubusercontent.com/{github_repo}/{branch}/{source_path}"
     try:
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            content = resp.read()
-        with open(save_path, 'wb') as f:
-            f.write(content)
-        return content.decode('utf-8', errors='ignore')
-    except Exception as e:
+        r = req_lib.get(url, headers=DEFAULT_HEADERS, timeout=30)
+        if r.status_code == 200:
+            with open(save_path, 'wb') as f:
+                f.write(r.content)
+            return r.content.decode('utf-8', errors='ignore')
+        print(f"  GitHub download failed: HTTP {r.status_code}")
+        return None
+    except req_lib.exceptions.RequestException as e:
         print(f"  GitHub download failed: {e}")
         return None
 
@@ -230,15 +261,13 @@ def extract_image_urls(content):
 def download_image(url, save_path):
     """Download an image from URL to local path."""
     try:
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            content = resp.read()
-        if len(content) > 100:
+        r = req_lib.get(url, headers=DEFAULT_HEADERS, timeout=30)
+        if r.status_code == 200 and len(r.content) > 100:
             with open(save_path, 'wb') as f:
-                f.write(content)
-            return len(content)
+                f.write(r.content)
+            return len(r.content)
         return 0
-    except Exception as e:
+    except req_lib.exceptions.RequestException as e:
         print(f"    Image download failed: {e}")
         return 0
 
@@ -389,12 +418,9 @@ def main():
     else:
         # Discover pages from the site
         print("Step 1: Discovering pages from site sidebar...")
-        try:
-            req = urllib.request.Request(args.url, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req, timeout=30) as resp:
-                html = resp.read().decode('utf-8', errors='ignore')
-        except Exception as e:
-            print(f"Failed to fetch site: {e}")
+        html = fetch_url(args.url)
+        if html is None:
+            print(f"Failed to fetch site: {args.url}")
             sys.exit(1)
 
         # Parse section prefix from URL
