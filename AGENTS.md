@@ -32,7 +32,7 @@
 
 **适用场景**：VuePress/VitePress 文档站、GitHub 开源项目文档、云平台文档、技术博客、任何需要离线阅读的技术文档网站。
 
-**前置条件**：Python 3 + `pip install beautifulsoup4 markdownify`；可选 `npm install -g @mermaid-js/mermaid-cli`（渲染 Mermaid 图表）
+**前置条件**：Python 3 + `pip install beautifulsoup4 markdownify requests`
 
 ### evaluate-skill（Skill 质量评估）
 

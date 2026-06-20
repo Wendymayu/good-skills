@@ -24,24 +24,13 @@ Issues encountered during real-world website-to-markdown conversion, with proven
 
 ## Issue 2: VuePress SPA Lazy Content
 
-**Symptom:** Curl/wget downloads show `Page height: 2551px` with content but no mermaid SVGs. Browser automation (Playwright) can't find rendered SVGs even after scrolling.
+**Symptom:** Curl/wget downloads show `Page height: 2551px` with content but no rendered diagrams. Browser automation (Playwright) can't find rendered SVGs even after scrolling.
 
-**Root cause:** VuePress is a Vue.js SPA. SSR provides a skeleton page. The Vue app hydrates client-side, but Mermaid lazy components (`mermaid-lazy-container`) only render via IntersectionObserver when visible. In headless browsers, IntersectionObserver often doesn't fire properly.
+**Root cause:** VuePress is a Vue.js SPA. SSR provides a skeleton page. The Vue app hydrates client-side, but lazy components only render via IntersectionObserver when visible. In headless browsers, IntersectionObserver often doesn't fire properly.
 
-**Solution:** Don't try browser rendering. Instead:
-1. Get source `.md` files from GitHub (contain `\`\`\`mermaid` code blocks)
-2. Render mermaid locally with `mmdc` CLI tool
+**Solution:** Get source `.md` files from GitHub. Mermaid code blocks are preserved as-is in the downloaded Markdown — they render natively in editors like Typora and VS Code that support Mermaid preview.
 
-## Issue 3: Mermaid Rendering
-
-**Symptom:** `mermaid-py` API returns 400 errors for Chinese text and `classDef` styles. `mmdc` not found in Python subprocess.
-
-**Solutions:**
-- **mermaid-py:** Uses Mermaid.ink online API which rejects advanced syntax (classDef, Chinese text, subgraph). Don't rely on it for production docs.
-- **mmdc CLI:** Install via `npm install -g @mermaid-js/mermaid-cli`. On Windows, Python subprocess can't find it by name — use full path from `npm prefix -g` (typically `C:\Users\{user}\AppData\Roaming\npm\mmdc.cmd`).
-- **Rendering command:** `mmdc -i input.mmd -o output.png -b white --scale 2`
-
-## Issue 4: Image Relative Paths
+## Issue 3: Image Relative Paths
 
 **Symptom:** Markdown file at `docs/agent/prompt-engineering.md` references `images/llm-context-window.png`. Typora resolves this relative to the markdown file's directory, looking for `docs/agent/images/` — wrong.
 
@@ -58,13 +47,13 @@ output/
 │   └── rag-basis.md     → ../images/xxx (up one level, OK)
 ```
 
-## Issue 5: URL-Encoded Filenames
+## Issue 4: URL-Encoded Filenames
 
 **Symptom:** One image URL contains `%20` (space): `sub-agent-task-splitting-context-isolation%20.png`. Local file saved as `sub-agent-task-splitting-context-isolation.png` (without `%20`). Markdown reference still has `%20`, so Typora can't find it.
 
 **Solution:** After downloading images, scan all markdown files for `%20` in image references and replace with the actual local filename.
 
-## Issue 6: Discovering All Pages
+## Issue 5: Discovering All Pages
 
 **Symptom:** How to find all page URLs from a documentation site?
 
@@ -74,13 +63,13 @@ output/
 3. **Sitemap:** Check `/sitemap.xml` or `/atom.xml`
 4. **Manual:** If site structure is clear (e.g., `/ai/agent/`, `/ai/rag/`), enumerate known paths
 
-## Issue 7: CDN Image URLs
+## Issue 6: CDN Image URLs
 
 **Symptom:** Images hosted on `oss.javaguide.cn` or similar CDN. Need to extract all image URLs from each page and download them.
 
 **Pattern:** Most VuePress/VitePress sites use a CDN for images. Extract URLs matching any `https://...png|jpg|jpeg|gif|svg|webp` from each page's HTML or markdown, download to local `images/` directory, then replace remote URLs with local relative paths. The script now handles any remote image URL (not just oss.* domains).
 
-## Issue 8: Strategy B — Direct HTML Extraction
+## Issue 7: Strategy B — Direct HTML Extraction
 
 **When it applies:** Sidebar discovers 0 pages and no `--github-repo` is provided.
 
@@ -90,7 +79,6 @@ output/
 3. Strip noise (nav, header, footer, aside, ads, scripts, styles)
 4. Convert to Markdown with markdownify (ATX headings, dash bullets)
 5. Localize remote image URLs to `images/` directory
-6. Render Mermaid blocks if mmdc available
 
 **Known limitations:**
 - Pure SPA sites (Go Tour, Anthropic Docs, InfoQ) return empty HTML shells → Strategy B cannot extract content

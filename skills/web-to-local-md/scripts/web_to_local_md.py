@@ -6,12 +6,10 @@ Encapsulates the full process:
 1. Discover pages from site sidebar
 2. Download source .md from GitHub (preferred) or convert HTML
 3. Download all images from CDN
-4. Render mermaid blocks to PNG (if mmdc available)
-5. Fix relative image paths
-6. Clean up temp files
+4. Fix relative image paths
 
 Usage:
-  python web_to_local_md.py --url "https://javaguide.cn/ai/" --github-repo "Snailclimb/JavaGuide" --output-dir "./downloaded" --render-mermaid
+  python web_to_local_md.py --url "https://javaguide.cn/ai/" --github-repo "Snailclimb/JavaGuide" --output-dir "./downloaded"
 """
 
 import argparse
@@ -19,8 +17,6 @@ import os
 import re
 import sys
 import json
-import subprocess
-import tempfile
 import requests as req_lib
 from html.parser import HTMLParser
 
@@ -334,90 +330,6 @@ def fix_image_paths(content, subdir):
     return content
 
 
-# ─── Mermaid Rendering ───
-
-def find_mmdc_path():
-    """Find mmdc executable path (handles Windows npm location)."""
-    # Try direct execution first
-    try:
-        result = subprocess.run(['mmdc', '--version'], capture_output=True, timeout=10)
-        if result.returncode == 0:
-            return 'mmdc'
-    except Exception:
-        pass
-
-    # On Windows, find npm global path
-    try:
-        result = subprocess.run(['npm', 'prefix', '-g'], capture_output=True, timeout=10,
-                                shell=True)
-        if result.returncode == 0:
-            prefix = result.stdout.decode('utf-8', errors='ignore').strip()
-            mmdc_path = os.path.join(prefix, 'mmdc.cmd')
-            if os.path.exists(mmdc_path):
-                return mmdc_path
-    except Exception:
-        pass
-
-    return None
-
-
-def render_mermaid_block(code, output_path, mmdc_path):
-    """Render a mermaid code block to PNG using mmdc."""
-    tmp_mmd = os.path.join(tempfile.gettempdir(), 'mermaid_temp.mmd')
-    with open(tmp_mmd, 'w', encoding='utf-8') as f:
-        f.write(code)
-
-    try:
-        cmd = [mmdc_path, '-i', tmp_mmd, '-o', output_path, '-b', 'white', '--scale', '2']
-        result = subprocess.run(cmd, capture_output=True, timeout=60, shell=True)
-        if os.path.exists(output_path) and os.path.getsize(output_path) > 500:
-            return True
-        return False
-    except Exception as e:
-        print(f"    mmdc error: {e}")
-        return False
-    finally:
-        if os.path.exists(tmp_mmd):
-            os.unlink(tmp_mmd)
-
-
-def render_all_mermaid(content, filename, img_dir, mmdc_path, subdir=''):
-    """Find all mermaid code blocks, render to PNG, replace with image refs."""
-    blocks = []
-    pattern = r'```mermaid\n(.*?)```'
-    for match in re.finditer(pattern, content, re.DOTALL):
-        blocks.append({
-            'start': match.start(),
-            'end': match.end(),
-            'code': match.group(1),
-        })
-
-    if not blocks or not mmdc_path:
-        return content, 0
-
-    new_content = content
-    rendered = 0
-
-    # Process from end to start to preserve offsets
-    for i in range(len(blocks) - 1, -1, -1):
-        block = blocks[i]
-        base_name = filename.replace('.md', '')
-        img_filename = f"{base_name}-mermaid-{i + 1}.png"
-        img_path = os.path.join(img_dir, img_filename)
-
-        success = render_mermaid_block(block['code'], img_path, mmdc_path)
-        if success:
-            img_prefix = get_image_prefix(subdir)
-            img_ref = f"![流程图 {i + 1}]({img_prefix}{img_filename})"
-            new_content = new_content[:block['start']] + img_ref + new_content[block['end']:]
-            rendered += 1
-            print(f"    Mermaid block {i + 1}: rendered to {img_filename}")
-        else:
-            print(f"    Mermaid block {i + 1}: rendering failed, keeping code block")
-
-    return new_content, rendered
-
-
 # ─── Main Pipeline ───
 
 def main():
@@ -427,7 +339,6 @@ def main():
     parser.add_argument('--github-branch', default='main', help='GitHub branch for source files (default: main)')
     parser.add_argument('--github-docs-path', default='docs', help='Path prefix in GitHub repo for doc files (default: docs)')
     parser.add_argument('--output-dir', required=True, help='Local output directory')
-    parser.add_argument('--render-mermaid', action='store_true', help='Render mermaid blocks to PNG using mmdc')
     parser.add_argument('--pages', default=None, help='JSON file with page definitions [{subdir, filename, path, title}]')
     args = parser.parse_args()
 
@@ -504,10 +415,6 @@ def main():
                 strategy_b_used = True
                 all_remote_images.update(extract_image_urls(strategy_b_md))
                 strategy_b_md = fix_image_paths(strategy_b_md, '')
-                mmdc_path = find_mmdc_path() if args.render_mermaid else None
-                if mmdc_path and '```mermaid' in strategy_b_md:
-                    strategy_b_md, rendered = render_all_mermaid(strategy_b_md, filename, img_dir, mmdc_path)
-                    print(f"    Mermaid: {rendered} blocks rendered")
                 with open(md_save_path, 'w', encoding='utf-8') as f:
                     f.write(strategy_b_md)
                 total_ok = 1
@@ -519,15 +426,9 @@ def main():
     # Step 2: Download source files (only if not already handled by Strategy B)
     total_ok = 0
     total_fail = 0
-    mmdc_path = find_mmdc_path() if args.render_mermaid else None
 
     if not strategy_b_used and pages:
         print(f"\nStep 2: Downloading {len(pages)} pages...")
-
-        if mmdc_path:
-            print(f"  mmdc found: {mmdc_path}")
-        elif args.render_mermaid:
-            print("  WARNING: mmdc not found. Install: npm install -g @mermaid-js/mermaid-cli")
 
         for page in pages:
             subdir = page.get('subdir', '')
@@ -566,10 +467,6 @@ def main():
                 all_remote_images.update(extract_image_urls(content))
                 # Fix image paths for local viewing
                 content = fix_image_paths(content, subdir)
-                # Render mermaid if requested
-                if mmdc_path and '```mermaid' in content:
-                    content, rendered = render_all_mermaid(content, filename, img_dir, mmdc_path, subdir)
-                    print(f"    Mermaid: {rendered} blocks rendered")
 
                 with open(md_path, 'w', encoding='utf-8') as f:
                     f.write(content)
