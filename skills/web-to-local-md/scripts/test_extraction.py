@@ -6,7 +6,7 @@ import os
 # Add scripts directory to path for import
 sys.path.insert(0, os.path.dirname(__file__))
 
-from web_to_local_md import extract_main_content
+from web_to_local_md import extract_main_content, strip_noise
 
 # Helper to generate sufficiently long content for threshold tests
 # Must exceed 200 chars text AND 500 chars HTML
@@ -81,3 +81,42 @@ def test_short_html():
     html = '<html><body><p>Short</p></body></html>'
     result = extract_main_content(html)
     assert result is None
+
+
+def test_strip_scripts_and_styles():
+    """Script and style tags should be removed."""
+    html = '<div><script>alert("xss")</script><style>.foo{color:red}</style><p>Keep this paragraph of text content.</p></div>'
+    result = strip_noise(html)
+    assert 'alert' not in result
+    assert '.foo' not in result
+    assert 'Keep this' in result
+
+def test_strip_nav_header_footer():
+    """Nav, header, footer tags should be removed."""
+    html = '<div><nav><a href="/home">Home navigation link</a></nav><p>Content here that is meaningful and worth keeping for reading.</p><footer>Copyright 2024 notice in footer area</footer></div>'
+    result = strip_noise(html)
+    assert 'Home navigation' not in result
+    assert 'Copyright' not in result
+    assert 'Content here' in result
+
+def test_strip_aside():
+    """Aside tags should be removed."""
+    html = '<div><aside><p>Sidebar note that should be removed from the content.</p></aside><p>Main text paragraph that we want to preserve in output.</p></div>'
+    result = strip_noise(html)
+    assert 'Sidebar note' not in result
+    assert 'Main text' in result
+
+def test_strip_noise_classes():
+    """Elements with noise class names should be removed."""
+    html = '<div><div class="breadcrumb"><a>Home breadcrumb trail</a></div><div class="cookie-banner">Accept cookies notice banner text</div><p>Real content paragraph that should survive stripping.</p></div>'
+    result = strip_noise(html)
+    assert 'breadcrumb' not in result
+    assert 'Accept cookies' not in result
+    assert 'Real content' in result
+
+def test_preserve_code_blocks():
+    """Pre/code blocks should NOT be stripped."""
+    html = '<div><pre><code>def hello():\n    pass</code></pre><p>Text paragraph content for preservation.</p></div>'
+    result = strip_noise(html)
+    assert 'def hello()' in result
+    assert 'Text paragraph' in result

@@ -167,6 +167,50 @@ def extract_main_content(html):
     return None
 
 
+NOISE_CLASSES = [
+    'sidebar', 'menu', 'nav', 'navigation', 'breadcrumb',
+    'cookie', 'cookie-banner', 'ad', 'ads', 'advertisement',
+    'banner', 'promo', 'promotion', 'share', 'social-share',
+    'comment', 'comments', 'disqus', 'footer', 'header',
+    'toc', 'table-of-contents', 'related', 'recommend',
+    'tags', 'tag-list', 'pagination', 'pager',
+]
+
+NOISE_IDS = [
+    'sidebar', 'nav', 'navigation', 'header', 'footer',
+    'menu', 'comments', 'comment', 'disqus_thread',
+    'breadcrumb', 'toc',
+]
+
+def strip_noise(html):
+    """Remove navigation, sidebars, ads, scripts, styles from HTML content.
+
+    Preserves <pre>, <code>, <table>, <img>, and semantic content tags.
+    """
+    from bs4 import BeautifulSoup
+
+    soup = BeautifulSoup(html, 'html.parser')
+
+    # Remove script/style tags entirely
+    for tag in soup.find_all(['script', 'style', 'noscript']):
+        tag.decompose()
+
+    # Remove semantic noise tags
+    for tag in soup.find_all(['nav', 'header', 'footer', 'aside']):
+        tag.decompose()
+
+    # Remove elements by noise class names (BeautifulSoup accepts list for class_)
+    for tag in soup.find_all(class_=NOISE_CLASSES):
+        tag.decompose()
+
+    # Remove elements by noise IDs (id parameter needs regex for list matching)
+    noise_id_pattern = '|'.join(NOISE_IDS)
+    for tag in soup.find_all(id=re.compile(noise_id_pattern)):
+        tag.decompose()
+
+    return str(soup)
+
+
 # ─── Image Handling ───
 
 def extract_image_urls(content):
