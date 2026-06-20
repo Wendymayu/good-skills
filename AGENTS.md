@@ -26,13 +26,13 @@
 
 ### web-to-local-md（网站文档离线下载）
 
-将网站文档专区完整下载到本地 Markdown 文件，含图片和渲染后的 Mermaid 流程图，支持 Typora 等编辑器离线阅读。优先从 GitHub 下载源 `.md` 文件（质量远优于 HTML 转换），自动处理 VuePress/VitePress SPA 懒加载、Mermaid 图表渲染、CDN 图片下载和相对路径修正。
+将网站文档专区完整下载到本地 Markdown 文件，含图片和渲染后的 Mermaid 流程图，支持 Typora 等编辑器离线阅读。双策略架构：优先从 GitHub 下载源 `.md` 文件（Strategy A，质量最优），无 GitHub 源时自动切换 Strategy B 直接提取 HTML 正文并转换为 Markdown。支持 VuePress/VitePress、GitHub 开源文档、SSR 文档站（AWS、Azure、GCP 等）和中文技术博客。
 
-**调用**：`/good-skills:web-to-local-md <网站URL> --github-repo OWNER/REPO --output-dir DIR --render-mermaid`
+**调用**：`/good-skills:web-to-local-md <网站URL> [--github-repo OWNER/REPO] [--output-dir DIR] [--render-mermaid]`
 
-**适用场景**：VuePress/VitePress 文档站、GitHub 开源项目文档、任何需要离线阅读的技术文档网站。
+**适用场景**：VuePress/VitePress 文档站、GitHub 开源项目文档、云平台文档、技术博客、任何需要离线阅读的技术文档网站。
 
-**前置条件**：Python 3；可选 `npm install -g @mermaid-js/mermaid-cli`（渲染 Mermaid 图表）
+**前置条件**：Python 3 + `pip install beautifulsoup4 markdownify`；可选 `npm install -g @mermaid-js/mermaid-cli`（渲染 Mermaid 图表）
 
 ### evaluate-skill（Skill 质量评估）
 

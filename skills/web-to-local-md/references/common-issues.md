@@ -78,4 +78,30 @@ output/
 
 **Symptom:** Images hosted on `oss.javaguide.cn` or similar CDN. Need to extract all image URLs from each page and download them.
 
-**Pattern:** Most VuePress/VitePress sites use a CDN for images. Extract URLs matching `https://oss.example.com/...png|jpg|jpeg|gif|svg|webp` from each page's HTML or markdown, download to local `images/` directory, then replace remote URLs with local relative paths.
+**Pattern:** Most VuePress/VitePress sites use a CDN for images. Extract URLs matching any `https://...png|jpg|jpeg|gif|svg|webp` from each page's HTML or markdown, download to local `images/` directory, then replace remote URLs with local relative paths. The script now handles any remote image URL (not just oss.* domains).
+
+## Issue 8: Strategy B — Direct HTML Extraction
+
+**When it applies:** Sidebar discovers 0 pages and no `--github-repo` is provided.
+
+**How it works:**
+1. Fetch URL HTML with enhanced headers (Mozilla UA, Accept-Language, Connection)
+2. Find main content container via CSS selector heuristics (article, main, [role="main"], known blog IDs)
+3. Strip noise (nav, header, footer, aside, ads, scripts, styles)
+4. Convert to Markdown with markdownify (ATX headings, dash bullets)
+5. Localize remote image URLs to `images/` directory
+6. Render Mermaid blocks if mmdc available
+
+**Known limitations:**
+- Pure SPA sites (Go Tour, Anthropic Docs, InfoQ) return empty HTML shells → Strategy B cannot extract content
+- Anti-bot sites (知乎 403, CSDN 521) block automated requests
+- Some sites serve SSR HTML but content is minimal (<200 chars of actual text) → treated as empty
+
+**Content container selectors tried (in priority order):**
+- `article`, `[role="main"]`, `main`
+- `.article-content`, `.post-content`, `.main-content`, `.content-body`
+- `.documentation`, `.doc-content`, `#content`, `#main-content`
+- `#cnblogs_post_body` (博客园), `.article__content` (SegmentFault)
+- `#article-content` (阿里云), `.topic-richtext` (知乎)
+- `.awsui-text-container` (AWS docs)
+- Fallback: `<body>` with noise removed (nav/header/footer/aside + class/id-based noise stripping with word-boundary anchors)

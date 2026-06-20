@@ -1,6 +1,6 @@
 ---
 name: web-to-local-md
-description: Use when the user wants to download an entire website section (docs, blog, wiki) to local markdown files with images, for offline reading. Handles VuePress/VitePress SPA sites, GitHub open-source docs, and generic websites with lazy-loaded diagrams.
+description: Use when the user wants to download an entire website section (docs, blog, wiki) to local markdown files with images, for offline reading. Handles VuePress/VitePress SPA sites, GitHub open-source docs, SSR documentation sites (AWS, Azure, GCP), and generic websites with lazy-loaded diagrams.
 allowed-tools: WebFetch, WebSearch, Bash(python *), Bash(curl *), Bash(npm *), Bash(mmdc *), Bash(pip install *), Read, Write, Grep, Glob
 argument-hint: "[网站URL] [--github-repo OWNER/REPO] [--output-dir DIR] [--render-mermaid]"
 ---
@@ -11,7 +11,13 @@ Download an entire website section to local markdown files with all images, for 
 
 ## Overview
 
-Core principle: **GitHub source markdown > HTML conversion.** For open-source sites (VuePress, VitePress, docsify), the raw `.md` files on GitHub always beat HTML-to-markdown conversion. HTML conversion loses headers, corrupts image URLs, drops tables, and can't render lazy-loaded Mermaid diagrams.
+Core principle: **GitHub source markdown > HTML conversion.** For open-source sites (VuePress, VitePress, docsify), the raw `.md` files on GitHub always beat HTML-to-markdown conversion. When GitHub source is unavailable, Strategy B extracts content directly from the page's HTML.
+
+## Prerequisites
+
+- **Python 3** — required
+- **beautifulsoup4 + markdownify** — `pip install beautifulsoup4 markdownify` (Strategy B requires these)
+- **mmdc (optional)** — `npm install -g @mermaid-js/mermaid-cli` (for Mermaid diagram rendering)
 
 ## When to Use
 
@@ -32,15 +38,27 @@ digraph decision {
   "Is it open-source on GitHub?" -> "Strategy A: GitHub source" [label="yes"];
   "Is it open-source on GitHub?" -> "Strategy B: HTML conversion" [label="no"];
   "Strategy A: GitHub source" -> "Discover pages from site sidebar";
-  "Discover pages from site sidebar" -> "Download .md from GitHub";
+  "Discover pages from site sidebar" -> "Pages found?" [label="discovered"];
+  "Pages found?" -> "Download .md from GitHub" [label="yes"];
+  "Pages found?" -> "Single-page fallback from URL" [label="no, derive from URL path"];
   "Download .md from GitHub" -> "Download images from CDN";
   "Download images from CDN" -> "Has Mermaid blocks?";
   "Has Mermaid blocks?" -> "Render with mmdc to PNG" [label="yes"];
   "Has Mermaid blocks?" -> "Fix relative image paths" [label="no"];
   "Render with mmdc to PNG" -> "Fix relative image paths";
-  "Strategy B: HTML conversion" -> "Use BeautifulSoup + markdownify";
-  "Use BeautifulSoup + markdownify" -> "Fix converted content";
+  "Strategy B: HTML conversion" -> "Discover pages from site sidebar";
+  "Discover pages from site sidebar" -> "Pages found?" [label="discovered"];
+  "Pages found?" -> "Batch download & convert" [label="yes"];
+  "Pages found?" -> "Single-page Strategy B fallback" [label="no"];
+  "Single-page Strategy B fallback" -> "Extract main content via CSS selectors";
+  "Extract main content via CSS selectors" -> "Strip noise (nav/ads/scripts)";
+  "Strip noise (nav/ads/scripts)" -> "Convert to Markdown with markdownify";
+  "Convert to Markdown with markdownify" -> "Content sufficient?" [label="converted"];
+  "Content sufficient?" -> "Download images + fix paths" [label="yes (>200 chars)"];
+  "Content sufficient?" -> "FAIL: pure SPA, no SSR content" [label="no"];
   "Fix relative image paths" -> "DONE";
+  "Download images + fix paths" -> "DONE";
+  "Batch download & convert" -> "Fix relative image paths";
 }
 ```
 
@@ -48,12 +66,12 @@ digraph decision {
 
 | Step | Tool | What it does |
 |------|------|---------------|
-| 1. Discover pages | WebFetch + sidebar parsing | Find all doc page URLs from site navigation |
-| 2. Get source files | curl GitHub raw URLs | Download original `.md` files (best quality) |
-| 3. Download images | curl oss/javaguide CDN URLs | Save all PNG/SVG/JPEG to `images/` dir |
-| 4. Render Mermaid | mmdc CLI | Convert `\`\`\`mermaid` blocks to PNG images |
-| 5. Fix paths | Python script | Replace CDN image URLs with local relative paths. Files in subdirectories use `../images/xxx.png`; files in root directory use `images/xxx.png` |
-| 6. Clean up | Delete temp files | Remove HTML files, scripts, source dirs |
+| 1. Discover pages | Sidebar parsing or direct URL | Find all doc page URLs from site navigation, or use URL as single page |
+| 2. Get source files | GitHub raw URLs or HTML extraction | Strategy A: download `.md` files. Strategy B: extract content from HTML |
+| 3. Extract content | BeautifulSoup + markdownify | Strategy B: find main content, strip noise, convert to Markdown |
+| 4. Download images | requests library | Save all PNG/SVG/JPEG to `images/` dir |
+| 5. Render Mermaid | mmdc CLI | Convert `\`\`\`mermaid` blocks to PNG images |
+| 6. Fix paths | Python script | Replace remote URLs with local relative paths. Files in subdirectories use `../images/xxx.png`; files in root directory use `images/xxx.png` |
 
 ## Implementation
 
@@ -68,7 +86,7 @@ python ${CLAUDE_PLUGIN_ROOT}/scripts/web_to_local_md.py --url "https://example.c
 ## Common Mistakes
 
 | Mistake | What happens | Fix |
-|---------|-------------|-----|
+|---------|-------------|------|
 | Using regex HTML→MD conversion | Empty headers, corrupted image URLs, lost tables, duplicated content | **Always prefer GitHub source .md files** |
 | Leaving `\`\`\`mermaid` code blocks | Users see raw `flowchart LR` code instead of diagrams | Render with mmdc to PNG, replace block with image reference (uses `../images/` in subdirs, `images/` in root) |
 | Image path = `images/xxx.png` (when file is in a subdirectory) | Typora looks in `subdir/images/` (wrong) | Use `../images/xxx.png` (relative to parent). When file is in root directory, use `images/xxx.png` instead |
@@ -80,3 +98,5 @@ python ${CLAUDE_PLUGIN_ROOT}/scripts/web_to_local_md.py --url "https://example.c
 ## Real-World Impact
 
 Applied to JavaGuide AI section (javaguide.cn/ai/): 27 markdown docs, 117 images (94 original + 23 mermaid-rendered), 11.9 MB total. All viewable offline in Typora with proper relative paths and rendered flowcharts.
+
+Strategy B tested against 17 previously-failed SSR sites (AWS, Azure, GCP, OpenAI, Gemini, TensorFlow, D3.js, Grafana, etc.) — all now produce valid Markdown output.
