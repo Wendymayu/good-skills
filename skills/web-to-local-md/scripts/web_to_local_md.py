@@ -97,15 +97,21 @@ def extract_main_content(html):
 
     Returns the inner HTML of the best content container found,
     or None if no meaningful content can be extracted.
+    Thresholds: HTML input must be >=500 chars; content text must be >=200 chars.
+    200 chars ≈ 2-3 paragraphs, filters out nav/sidebar/teaser snippets.
     """
     from bs4 import BeautifulSoup
+    import copy
 
-    if not html or len(html) < 100:
+    if not html or len(html) < 500:
         return None
 
     soup = BeautifulSoup(html, 'html.parser')
 
     # Priority-ordered selector chain for known content containers
+    # Each selector is tried in order; when multiple elements match a selector,
+    # the one with the longest text content is preferred (avoids sidebar teasers).
+    # Note: .content is intentionally omitted — too generic, matches sidebar divs.
     selectors = [
         # Semantic HTML5
         'article',
@@ -128,31 +134,35 @@ def extract_main_content(html):
         '.Post-RichTextContainer',     # 知乎专栏新版
         # Cloud/docs patterns
         '.awsui-text-container',       # AWS docs
-        '.content',                    # Generic fallback
     ]
 
     for sel in selectors:
         elements = soup.select(sel)
-        for el in elements:
-            text = el.get_text(strip=True)
-            # Must have substantial content (>40 chars of actual text)
-            if len(text) > 40:
-                return str(el)
+        if elements:
+            # Prefer the element with the most content text
+            best = max(elements, key=lambda el: len(el.get_text(strip=True)))
+            text = best.get_text(strip=True)
+            # Must have substantial content (>200 chars of actual text)
+            if len(text) > 200:
+                return str(best)
 
-    # Fallback: use <body> but strip noise first
+    # Fallback: use <body> copy (avoid mutating the original soup) with noise removal
     body = soup.find('body')
     if body:
+        # Work on a copy to avoid irreversible decompose() mutations
+        body_copy = copy.copy(body)
         # Remove known noise elements
-        for tag in body.find_all(['nav', 'header', 'footer', 'aside']):
+        for tag in body_copy.find_all(['nav', 'header', 'footer', 'aside']):
             tag.decompose()
-        for tag in body.find_all(class_=re.compile(r'sidebar|menu|nav|breadcrumb|cookie|ad|banner|promo|share|comment|footer|header')):
+        # Use word-boundary anchors to avoid overstripping (e.g. "content-header" won't match \bheader\b)
+        for tag in body_copy.find_all(class_=re.compile(r'\bsidebar\b|\bmenu\b|\bnav\b|\bbreadcrumb\b|\bcookie\b|\bad\b|\bbanner\b|\bpromo\b|\bshare\b|\bcomment\b|\bfooter\b|\bheader\b')):
             tag.decompose()
-        for tag in body.find_all(id=re.compile(r'sidebar|nav|header|footer|menu|comment')):
+        for tag in body_copy.find_all(id=re.compile(r'\bsidebar\b|\bnav\b|\bheader\b|\bfooter\b|\bmenu\b|\bcomment\b')):
             tag.decompose()
 
-        text = body.get_text(strip=True)
-        if len(text) > 40:
-            return str(body)
+        text = body_copy.get_text(strip=True)
+        if len(text) > 200:
+            return str(body_copy)
 
     return None
 
