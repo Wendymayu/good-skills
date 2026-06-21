@@ -17,6 +17,7 @@ import os
 import re
 import sys
 import json
+import urllib.parse
 import requests as req_lib
 from html.parser import HTMLParser
 
@@ -117,6 +118,107 @@ def strip_frontmatter(content):
     return content
 
 
+def extract_page_metadata(html):
+    """Extract page title and publication date from HTML before noise stripping.
+
+    Returns (title, date_str):
+    - title: str or None — page H1 or <title> text
+    - date_str: str or None — publication date in YYYY-MM-DD format
+    """
+    from bs4 import BeautifulSoup
+
+    if not html:
+        return (None, None)
+
+    soup = BeautifulSoup(html, 'html.parser')
+
+    # ── Title extraction ──
+    title = None
+    # Priority 1: <h1> inside the main content area (not in nav/header/footer)
+    for h1 in soup.find_all('h1'):
+        parent_tags = [p.name for p in h1.parents if p.name]
+        # Skip if h1 is inside nav/header/footer/aside
+        if any(t in ('nav', 'header', 'footer', 'aside') for t in parent_tags):
+            continue
+        title = h1.get_text(strip=True)
+        if title:
+            break
+
+    # Priority 2: <title> element (fallback, often includes site name)
+    if not title:
+        title_tag = soup.find('title')
+        if title_tag:
+            raw = title_tag.get_text(strip=True)
+            # Remove common suffixes like " | Site Name" or " - Site Name"
+            for sep in (' | ', ' - ', ' – ', ' — ', ' :: '):
+                if sep in raw:
+                    raw = raw.split(sep)[0]
+            title = raw.strip()
+
+    # ── Date extraction ──
+    date_str = None
+    date_pattern = r'(\d{4}[-/.]\d{1,2}[-/.]\d{1,2})'
+
+    # Priority 1: <meta property="article:published_time">
+    meta_date = soup.find('meta', attrs={'property': 'article:published_time'})
+    if meta_date and meta_date.get('content'):
+        m = re.search(date_pattern, meta_date['content'])
+        if m:
+            date_str = m.group(1).replace('/', '-').replace('.', '-')
+
+    # Priority 2: <time datetime="...">
+    if not date_str:
+        time_tag = soup.find('time', attrs={'datetime': True})
+        if time_tag:
+            m = re.search(date_pattern, time_tag['datetime'])
+            if m:
+                date_str = m.group(1).replace('/', '-').replace('.', '-')
+            else:
+                m = re.search(date_pattern, time_tag.get_text(strip=True))
+                if m:
+                    date_str = m.group(1).replace('/', '-').replace('.', '-')
+
+    # Priority 3: Common date class names
+    date_classes = ['post-date', 'pub-date', 'article-date', 'date',
+                    'post-meta', 'article-meta', 'entry-date',
+                    'publish-date', 'pubtime', 'post-time']
+    if not date_str:
+        for cls in date_classes:
+            el = soup.find(class_=cls)
+            if el:
+                m = re.search(date_pattern, el.get_text(strip=True))
+                if m:
+                    date_str = m.group(1).replace('/', '-').replace('.', '-')
+                    break
+
+    return (title, date_str)
+
+
+def inject_metadata(markdown_text, title, date_str):
+    """Inject H1 title and <small> publication date into markdown if missing.
+
+    If the markdown already has a # H1 line, skip title injection.
+    If it already has a <small> date line, skip date injection.
+    """
+    lines = markdown_text.split('\n')
+
+    has_h1 = any(line.startswith('# ') and not line.startswith('## ') for line in lines[:5])
+    has_date = any('<small style="color:gray">' in line for line in lines[:10])
+
+    prefix_lines = []
+    if title and not has_h1:
+        prefix_lines.append(f'# {title}')
+        prefix_lines.append('')
+    if date_str and not has_date:
+        prefix_lines.append(f'<small style="color:gray">{date_str}</small>')
+        prefix_lines.append('')
+
+    if prefix_lines:
+        return '\n'.join(prefix_lines + lines)
+
+    return markdown_text
+
+
 # ─── Content Extraction (Strategy B) ───
 
 def extract_main_content(html):
@@ -201,6 +303,14 @@ NOISE_CLASSES = [
     'comment', 'comments', 'disqus', 'footer', 'header',
     'toc', 'table-of-contents', 'related', 'recommend',
     'tags', 'tag-list', 'pagination', 'pager',
+    # Copy/clipboard buttons
+    'copy', 'copy-button', 'copy-code-btn', 'copy-action',
+    # Promotional content
+    'sponsor', 'affiliate', 'newsletter', 'subscribe', 'cta',
+    'callout', 'tip-box', 'download-app',
+    # Author/metadata noise
+    'author-info', 'author-card', 'post-meta-author',
+    'reading-time', 'view-count',
 ]
 
 NOISE_IDS = [
@@ -238,48 +348,116 @@ def strip_noise(html):
     return str(soup)
 
 
+def unwrap_anchor_headers(html):
+    """Unwrap <a class="header-anchor"> or <a class="anchor"> inside headings.
+
+    VuePress/VitePress headers use <h2><a class="header-anchor"><span>Title</span></a></h2>.
+    Removing the <a> wrapper keeps the inner text clean, preventing
+    markdownify from producing ## [Title](#title) artifacts.
+    """
+    from bs4 import BeautifulSoup
+
+    soup = BeautifulSoup(html, 'html.parser')
+
+    for a_tag in soup.find_all('a', class_=re.compile(r'header-anchor|anchor')):
+        # Only unwrap if parent is a heading tag
+        if a_tag.parent and a_tag.parent.name in ('h1', 'h2', 'h3', 'h4', 'h5', 'h6'):
+            a_tag.unwrap()
+
+    return str(soup)
+
+
+def clean_html_artifacts(markdown_text):
+    """Remove text-level HTML artifacts from markdownified content.
+
+    Handles:
+    - "Copy" / "复制代码" / "Copied!" standalone lines (code block buttons)
+    - Anchor links in headings: ## [Title](#title) → ## Title
+    - Empty table separator rows: |  |  |  |  | → remove
+    """
+    # Remove standalone Copy/Copied/复制代码 lines
+    markdown_text = re.sub(r'^\s*(Copy|Copied!|复制代码|复制)\s*$', '', markdown_text, flags=re.MULTILINE)
+
+    # Clean anchor links in headings: ## [Title](#title) → ## Title
+    markdown_text = re.sub(
+        r'^(#{1,6})\s+\[([^\]]+)\]\([^)]*\)',
+        r'\1 \2',
+        markdown_text,
+        flags=re.MULTILINE
+    )
+
+    # Remove empty table separator rows (all cells empty or just whitespace)
+    markdown_text = re.sub(r'^\s*\|\s*(?:\s*\|\s*)+\s*$', '', markdown_text, flags=re.MULTILINE)
+
+    return markdown_text
+
+
 def html_to_markdown(html):
     """Convert HTML content to Markdown using extract + strip_noise + markdownify.
 
-    Returns Markdown text on success, None if content is too short/empty.
+    Pipeline: extract_main → strip_noise → unwrap_anchor_headers → md_conv
+              → clean_html_artifacts → inject_metadata → whitespace cleanup
+
+    Returns (markdown_text, title, date_str) tuple on success,
+    (None, None, None) if content is too short/empty.
     """
     from markdownify import markdownify as md_conv
+
+    # Step 0: Extract page metadata from original HTML (before noise stripping)
+    title, date_str = extract_page_metadata(html)
 
     # Step 1: Extract main content
     content_html = extract_main_content(html)
     if content_html is None:
-        return None
+        return (None, None, None)
 
     # Step 2: Strip noise
     clean_html = strip_noise(content_html)
 
-    # Step 3: Convert to Markdown
+    # Step 3: Unwrap anchor-only headers (before markdownify)
+    clean_html = unwrap_anchor_headers(clean_html)
+
+    # Step 4: Convert to Markdown
     markdown_text = md_conv(clean_html, heading_style="ATX", bullets="-")
 
-    # Step 4: Clean up excessive whitespace
-    # Remove 3+ consecutive blank lines → 2 blank lines
+    # Step 5: Clean HTML artifacts (after markdownify)
+    markdown_text = clean_html_artifacts(markdown_text)
+
+    # Step 6: Inject H1 title and publication date if missing
+    markdown_text = inject_metadata(markdown_text, title, date_str)
+
+    # Step 7: Clean up excessive whitespace
     markdown_text = re.sub(r'\n{4,}', '\n\n\n', markdown_text)
-    # Remove trailing whitespace on each line
     markdown_text = re.sub(r' +\n', '\n', markdown_text)
 
-    # Step 5: Check minimum content length
+    # Step 8: Check minimum content length
     plain_text = re.sub(r'[#*\[\]\(\)!>`\n]', '', markdown_text)
     if len(plain_text.strip()) < 200:
-        return None
+        return (None, None, None)
 
-    return markdown_text.strip()
+    return (markdown_text.strip(), title, date_str)
 
 
 # ─── Image Handling ───
 
 def extract_image_urls(content):
-    """Extract all remote image URLs from content (Markdown or HTML)."""
+    """Extract all remote image URLs from content (Markdown or HTML).
+
+    Handles standard CDN URLs, byteimg signed URLs (with ~ in path),
+    and Next.js /_next/image proxy URLs with encoded nested URLs.
+    """
     urls = set()
-    # Match any https:// URL ending in an image extension
-    # Covers CDN, docs sites, static sites, etc.
-    pattern = r'https://[a-zA-Z0-9._/-]+/[a-zA-Z0-9._-]+\.(?:png|jpg|jpeg|gif|svg|webp|avif)(?:\?[a-zA-Z0-9=&_-]*)?'
+    # Standard CDN URLs — expanded with .awebp and ~ in path/filename
+    pattern = r'https://[a-zA-Z0-9._/~-]+/[a-zA-Z0-9._~-]+\.(?:png|jpg|jpeg|gif|svg|webp|avif|awebp)(?:\?[a-zA-Z0-9=%&_.+-]*)?'
     for url in re.findall(pattern, content):
         urls.add(url)
+
+    # Next.js /_next/image proxy: decode nested url parameter
+    next_pattern = r'/_next/image\?url=(https?%3A%2F%2F[a-zA-Z0-9._/~%-]+(?:\.[a-zA-Z0-9._~-]+(?:\.(?:png|jpg|jpeg|gif|svg|webp|avif|awebp)))?[a-zA-Z0-9./%~_-]*)(?:&[^"\'\\)]*)?'
+    for encoded_url in re.findall(next_pattern, content):
+        real_url = urllib.parse.unquote(encoded_url)
+        urls.add(real_url)
+
     return urls
 
 
@@ -310,23 +488,85 @@ def get_image_prefix(subdir):
     return '../' * (depth + 1) + 'images/'
 
 def fix_image_paths(content, subdir):
-    """Replace remote image URLs with local relative paths."""
+    """Replace remote image URLs with local relative paths.
+
+    Handles standard CDN URLs, byteimg signed URLs, and Next.js proxy URLs.
+    """
     prefix = get_image_prefix(subdir)
+
     def replace_url(match):
         url = match.group(0)
         filename = os.path.basename(url.split('?')[0])
         return prefix + filename
 
-    # Replace all remote image URLs (any domain)
+    # Replace standard remote image URLs (any domain)
     content = re.sub(
-        r'https://[a-zA-Z0-9._/-]+/[a-zA-Z0-9._-]+\.(?:png|jpg|jpeg|gif|svg|webp|avif)(?:\?[a-zA-Z0-9=&_-]*)?',
+        r'https://[a-zA-Z0-9._/~-]+/[a-zA-Z0-9._~-]+\.(?:png|jpg|jpeg|gif|svg|webp|avif|awebp)(?:\?[a-zA-Z0-9=%&_.+-]*)?',
         replace_url, content
     )
+
+    # Replace Next.js /_next/image proxy URLs — decode and get real image URL, then localize
+    def replace_next_url(match):
+        encoded_url = match.group(1)
+        real_url = urllib.parse.unquote(encoded_url)
+        filename = os.path.basename(real_url.split('?')[0])
+        return prefix + filename
+
+    content = re.sub(
+        r'/_next/image\?url=(https?%3A%2F%2F[a-zA-Z0-9._/~%-]+(?:\.[a-zA-Z0-9._~-]+(?:\.(?:png|jpg|jpeg|gif|svg|webp|avif|awebp)))?[a-zA-Z0-9./%~_-]*)(?:&[^"\'\\)]*)?',
+        replace_next_url, content
+    )
+
     # Fix %20 in filenames
     content = content.replace('%20.png', '.png')
     content = content.replace('%20.svg', '.svg')
     content = content.replace('%20.jpg', '.jpg')
     content = content.replace('%20.jpeg', '.jpeg')
+    content = content.replace('%20.awebp', '.awebp')
+    content = content.replace('%20.webp', '.webp')
+    return content
+
+
+def fill_image_alt_text(content):
+    """Fill empty or generic image alt text with descriptive text from filename.
+
+    Handles:
+    - ![](local_path) → ![filename-based-text](local_path)
+    - ![image.png](local_path) → ![filename-based-text](local_path)
+    Does NOT overwrite existing descriptive alt text.
+    """
+    def derive_alt(path):
+        """Derive alt text from image filename: strip extension, replace -/_ with spaces."""
+        basename = os.path.basename(path)
+        # Remove extension
+        name = re.sub(r'\.(?:png|jpg|jpeg|gif|svg|webp|avif|awebp)$', '', basename, flags=re.IGNORECASE)
+        # Replace - and _ with spaces
+        name = name.replace('-', ' ').replace('_', ' ')
+        # Capitalize first letter
+        if name:
+            name = name[0].upper() + name[1:]
+        return name or 'image'
+
+    # Fill empty alt text: ![](path) → ![derived](path)
+    def replace_empty_alt(match):
+        path = match.group(2)
+        alt = derive_alt(path)
+        return f'![{alt}]({path})'
+
+    content = re.sub(r'!\[\]\(([^)]+)\)', replace_empty_alt, content)
+
+    # Fill generic alt text: ![image.png](path), ![image](path), ![图片](path)
+    generic_alts = ['image.png', 'image.jpg', 'image.jpeg', 'image.svg', 'image.webp', 'image', '图片']
+    def replace_generic_alt(match):
+        alt = match.group(1)
+        path = match.group(2)
+        if alt in generic_alts:
+            new_alt = derive_alt(path)
+            return f'![{new_alt}]({path})'
+        return match.group(0)
+
+    content = re.sub(r'!\[([^\]]+)\]\(([^)]+)\)', replace_generic_alt, content)
+
     return content
 
 
@@ -408,13 +648,14 @@ def main():
         # Fallback B: direct HTML extraction (Strategy B) when no sidebar pages and no GitHub source
         if len(pages) == 0 and not args.github_repo:
             print("  No sidebar pages found. Trying Strategy B: direct HTML extraction...")
-            strategy_b_md = html_to_markdown(html)
+            strategy_b_md, _, _ = html_to_markdown(html)
             if strategy_b_md:
                 filename = 'index'
                 md_save_path = os.path.join(output_dir, f"{filename}.md")
                 strategy_b_used = True
                 all_remote_images.update(extract_image_urls(strategy_b_md))
                 strategy_b_md = fix_image_paths(strategy_b_md, '')
+                strategy_b_md = fill_image_alt_text(strategy_b_md)
                 with open(md_save_path, 'w', encoding='utf-8') as f:
                     f.write(strategy_b_md)
                 total_ok = 1
@@ -463,10 +704,15 @@ def main():
 
             if content:
                 content = strip_frontmatter(content)
+                # Inject H1 title and date from original page HTML
+                title_meta, date_meta = extract_page_metadata(html)
+                content = inject_metadata(content, title_meta, date_meta)
                 # Collect remote image URLs
                 all_remote_images.update(extract_image_urls(content))
                 # Fix image paths for local viewing
                 content = fix_image_paths(content, subdir)
+                # Fill empty/generic image alt text
+                content = fill_image_alt_text(content)
 
                 with open(md_path, 'w', encoding='utf-8') as f:
                     f.write(content)

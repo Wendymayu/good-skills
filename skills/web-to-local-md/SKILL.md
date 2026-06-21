@@ -84,9 +84,14 @@ python ${CLAUDE_PLUGIN_ROOT}/scripts/web_to_local_md.py --url "https://example.c
 | Using regex HTML→MD conversion | Empty headers, corrupted image URLs, lost tables, duplicated content | **Always prefer GitHub source .md files** |
 | Image path = `images/xxx.png` (when file is in a subdirectory) | Typora looks in `subdir/images/` (wrong) | Use `../images/xxx.png` (relative to parent). When file is in root directory, use `images/xxx.png` instead |
 | Curl downloads SPA HTML only | VuePress pages return skeleton (2551px height), no content | Use GitHub raw `.md` files instead |
-| VuePress anchor-only headers | `<h2><a class="header-anchor"><span>Title</span></a></h2>` — removing `<a>` loses title text | Unwrap anchor, keep `<span>` text |
+| VuePress anchor-only headers | `<h2><a class="header-anchor"><span>Title</span></a></h2>` — removing `<a>` loses title text | Unwrap anchor, keep `<span>` text (handled by `unwrap_anchor_headers()`) |
 | URL-encoded filenames in images | `sub-agent%20.png` fails to match local file | Download with corrected URL, replace `%20` in references |
-| Missing publication date | Output MD has title but no date context | Add `<small style="color:gray">YYYY-MM-DD</small>` below the H1 title, using the date from the original page. Only add the date — no author, category, or other metadata |
+| Missing publication date | Output MD has title but no date context | Add `<small style="color:gray">YYYY-MM-DD</small>` below the H1 title, using the date from the original page. Only add the date — no author, category, or other metadata (handled by `extract_page_metadata()`) |
+| Missing H1 title | Output starts with `##` or plain text | Extract `<h1>` or `<title>` before noise stripping; inject as `# title` first line (handled by `extract_page_metadata()`) |
+| "Copy"/"复制代码" artifacts | Button text appears in code blocks | `clean_html_artifacts()` removes these; copy-button classes in `NOISE_CLASSES` |
+| Next.js proxy image URLs | `/_next/image?url=...` not downloaded | Decode nested URL parameter via `urllib.parse.unquote`; add `.awebp` to extension list |
+| byteimg signed image URLs | CDN URLs with `~tplv-xxx` and `.awebp` | Expand regex character class to include `~`; add `.awebp` extension; handle `%` in query params |
+| Empty image alt text | `![](path)` or `![image.png](path)` | `fill_image_alt_text()` derives alt from filename (strip ext, replace `-/_` with spaces) |
 
 ## Real-World Impact
 

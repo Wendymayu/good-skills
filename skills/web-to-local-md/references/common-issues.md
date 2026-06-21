@@ -92,4 +92,55 @@ output/
 - `#cnblogs_post_body` (博客园), `.article__content` (SegmentFault)
 - `#article-content` (阿里云), `.topic-richtext` (知乎)
 - `.awsui-text-container` (AWS docs)
+
+## Issue 8: Missing H1 Title
+
+**Problem**: 5/7 golden evaluation cases lacked a top-level `# Title` heading. Output files started with `##` subsections or plain text, making navigation and offline reading difficult.
+
+**Root cause**: Page `<h1>` elements are often inside `<header>` or `<nav>` containers that `strip_noise()` removes entirely. When the content area only has `<h2>`+ headings, the title disappears.
+
+**Solution**: `extract_page_metadata()` extracts `<h1>` from the full page HTML before noise stripping, then `inject_metadata()` prepends `# Title` to the markdown if no H1 is found in the first 5 lines. Fallback: `<title>` element (with common suffixes like " | Site Name" stripped).
+
+**Code**: `web_to_local_md.py` → `extract_page_metadata()`, `inject_metadata()`
+
+## Issue 9: Missing Publication Date
+
+**Problem**: 5/7 golden evaluation cases lacked `<small style="color:gray">YYYY-MM-DD</small>` date markers below the H1 title.
+
+**Root cause**: No date extraction step existed in the pipeline. SKILL.md documented the requirement but the code didn't implement it.
+
+**Solution**: `extract_page_metadata()` searches for dates in priority order:
+1. `<meta property="article:published_time">`
+2. `<time datetime="...">` attribute or text
+3. Common date class names: `.post-date`, `.pub-date`, `.article-date`, `.date`, `.post-meta`, `.entry-date`, etc.
+4. `<small>`/`<span>` elements containing YYYY-MM-DD patterns
+
+`inject_metadata()` adds `<small style="color:gray">YYYY-MM-DD</small>` on line 3 if no date marker exists in the first 10 lines. Only the date is added — no author, category, or other metadata.
+
+**Code**: `web_to_local_md.py` → `extract_page_metadata()`, `inject_metadata()`
+
+## Issue 10: Next.js /_next/image Proxy URLs
+
+**Problem**: Images using Next.js `/_next/image?url=<encoded_url>&w=...&q=...` proxy paths were invisible to the regex — the URL has no image extension on the path segment `/image`.
+
+**Root cause**: `extract_image_urls()` regex required the extension to be on the final path segment. `/_next/image?url=https%3A//cdn.example.com/photo.png` doesn't match because the path part is just `image`.
+
+**Solution**: Added a separate regex pass for `/_next/image` patterns. The nested `url` query parameter is decoded via `urllib.parse.unquote()` to extract the real CDN image URL. Both `extract_image_urls()` and `fix_image_paths()` handle these proxy URLs.
+
+**Also fixed**: `.awebp` extension (WebP variant used by byteimg CDN) added to all image regex patterns. Character classes expanded to include `~` (byteimg `~tplv-xxx` suffix) and `%` (URL-encoded characters).
+
+**Code**: `web_to_local_md.py` → `extract_image_urls()`, `fix_image_paths()`
+
+## Issue 11: HTML Artifacts Not Cleaned
+
+**Problem**: "Copy"/"复制代码" button text and anchor links in headings (`## [Title](#title)`) appeared in markdown output. Also, empty table separator rows (`|  |  |  |  |`) survived markdownify conversion.
+
+**Root cause**: Copy button classes (`copy`, `copy-code-btn`) were not in `NOISE_CLASSES`. markdownify converts anchor-only `<a>` wrappers inside headings into `[Title](#title)` links. Empty table rows are HTML rendering artifacts.
+
+**Solution**: Three-part fix:
+1. **NOISE_CLASSES expanded**: Added `copy`, `copy-button`, `copy-code-btn`, `copy-action`, `sponsor`, `affiliate`, `newsletter`, `subscribe`, `cta`, `author-info`, `reading-time`, `view-count`, etc.
+2. **`unwrap_anchor_headers()`**: Preprocesses HTML before markdownify — unwraps `<a class="header-anchor">` inside `<h1>`-`<h6>` tags, keeping inner `<span>` text.
+3. **`clean_html_artifacts()`**: Post-processes markdown after markdownify — removes standalone "Copy"/"复制代码" lines, cleans `## [Title](#title)` → `## Title`, removes empty table separator rows.
+
+**Code**: `web_to_local_md.py` → `NOISE_CLASSES`, `unwrap_anchor_headers()`, `clean_html_artifacts()`
 - Fallback: `<body>` with noise removed (nav/header/footer/aside + class/id-based noise stripping with word-boundary anchors)
