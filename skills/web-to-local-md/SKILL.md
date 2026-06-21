@@ -75,6 +75,20 @@ python ${CLAUDE_PLUGIN_ROOT}/scripts/web_to_local_md.py --url "https://example.c
 
 **The script handles all steps automatically.** For manual/fallback approach, see references/common-issues.md.
 
+## Link Policy
+
+**Only preserve `[text](url)` links originating from HTML `<a href>` hyperlinks.** All other link forms are removed:
+
+| Link form | Source | Handling |
+|-----------|--------|---------|
+| `[text](url)` from `<a href>` | Strategy B (markdownify) | ✅ **Preserved** |
+| `[text](url)` from GitHub .md source | Strategy A (native Markdown) | ❌ Convert to plain text |
+| `<url>` autolinks | markdownify (autolinks=True) | ❌ Not generated (`autolinks=False`) |
+| Bare `https://...` URLs | Text content | ❌ Removed entirely |
+| `[text][ref]` reference links | Strategy A .md source | ❌ Convert to plain text |
+
+Implementation: `strip_non_html_links()` for Strategy A, `strip_bare_urls()` + `autolinks=False` for Strategy B.
+
 ## Common Mistakes
 
 | Mistake | What happens | Fix |
@@ -84,6 +98,8 @@ python ${CLAUDE_PLUGIN_ROOT}/scripts/web_to_local_md.py --url "https://example.c
 | Curl downloads SPA HTML only | VuePress pages return skeleton (2551px height), no content | Use GitHub raw `.md` files instead |
 | VuePress anchor-only headers | `<h2><a class="header-anchor"><span>Title</span></a></h2>` — removing `<a>` loses title text | Unwrap anchor, keep `<span>` text |
 | URL-encoded filenames in images | `sub-agent%20.png` fails to match local file | Download with corrected URL, replace `%20` in references |
+| Missing publication date | Output MD has title but no date context | Add `<small style="color:gray">YYYY-MM-DD</small>` below the H1 title, using the date from the original page. Only add the date — no author, category, or other metadata |
+| Preserving all links from GitHub .md source | Output full of remote URLs that don't work offline | Use `strip_non_html_links()` to keep only link text, discard URLs |
 
 ## Real-World Impact
 
