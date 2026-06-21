@@ -70,11 +70,12 @@ Glob: skills/{skill-name}/SKILL.md
    description: "JavaGuide AI 章节下载测试"
    priority: high
    ```
-   **关键：`--golden` 模式必须实际执行目标 skill。** 对每个用例，读取 `input.yaml` 的 `args` 字段，以此参数调用目标 skill 生成新输出，再与 `reference/` 中的黄金参考做回归对比。执行方式：
-   ```
-   /good-skills:{skill-name} {args from input.yaml}
-   ```
-   新输出文件写入 `{golden路径}/case-{N}/output/` 子目录（与 `reference/` 平级，便于对比）。步骤 2（结构断言）和步骤 3（合规评分）评估的是新生成的 `output/` 文件；步骤 4（回归对比）将 `output/` 与 `reference/` 对比，发现改进/退化/不变。
+   **关键：`--golden` 模式必须实际执行目标 skill，不得使用旧的 `output/` 文件。** 对每个用例：
+   1. **删除旧的 `output/` 目录**：`rm -rf {golden路径}/case-{N}/output/`，确保生成全新输出
+   2. 读取 `input.yaml` 的 `args` 字段
+   3. 以此参数调用目标 skill：`/good-skills:{skill-name} {args from input.yaml}`
+   4. 将 skill 生成的输出文件移动/复制到 `{golden路径}/case-{N}/output/` 子目录（与 `reference/` 平级）
+   5. 步骤 2（结构断言）和步骤 3（合规评分）评估的是**新生成**的 `output/` 文件；步骤 4（回归对比）将 `output/` 与 `reference/` 对比
 4. 如果以上都未指定 → 在当前目录下自动查找匹配 skill 输出模式的文件。常见模式：
    - `research-landscape` → `research-landscape-report-*.md`
    - `learn-domain` → `learn-domain-guide-*.md`
