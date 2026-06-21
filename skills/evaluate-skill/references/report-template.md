@@ -1,6 +1,6 @@
 # {SKILL_NAME} 评估报告
 
-**评估日期**: {DATE}
+**评估日期**: {DATETIME}
 **Skill 名称**: {SKILL_NAME}
 **输入描述**: {INPUT_DESCRIPTION}
 **评估模式**: {EVAL_MODE}
@@ -70,7 +70,7 @@
 
 # {SKILL_NAME} 综合评估报告（批量模式）
 
-**评估日期**: {DATE}
+**评估日期**: {DATETIME}
 **Skill 名称**: {SKILL_NAME}
 **黄金数据集**: {GOLDEN_PATH}
 **用例数量**: {CASE_COUNT}

@@ -1,8 +1,8 @@
 ---
 name: evaluate-skill
 description: Use when the user asks to "evaluate", "评估", "验证", "质量检查" a skill's output quality. Evaluates any good-skills skill using SKILL.md as rubric with structural assertions + LLM-as-Judge compliance scoring. Supports single-case, batch, and run-then-evaluate modes.
-allowed-tools: Read, Write, Glob, Grep, WebSearch, WebFetch, TodoWrite
-argument-hint: "[skill-name] [--input <路径>] [--run <skill参数>] [--golden <路径>] [--regress <参考路径>] [--verbose]"
+allowed-tools: Read, Write, Glob, Grep, WebSearch, WebFetch, TodoWrite, Skill
+argument-hint: "[skill-name] [--input <路径>] [--run <skill参数>] [--golden <路径>] [--verbose]"
 ---
 
 # Skill 输出质量评估
@@ -17,8 +17,7 @@ argument-hint: "[skill-name] [--input <路径>] [--run <skill参数>] [--golden 
 - **skill-name**（必填）：要评估的 skill 名称（如 `web-to-local-md`、`research-landscape`、`learn-domain`）。空参数 = 报错，必须询问用户想评估哪个 skill。
 - **--input <路径>**（可选）：指定已有输出文件路径。事后评估模式——评估已存在的输出文件。默认：在当前目录下自动查找匹配 skill 输出模式的文件（如 `research-landscape-report-*.md`、`learn-domain-guide-*.md`）。
 - **--run <skill参数>**（可选）：先执行目标 skill 再评估其输出。`<skill参数>` 是目标 skill 的完整参数字符串（如 `--run "可观测 --since 2026-05-01"`）。evaluate-skill 会先调用目标 skill，然后自动定位其输出文件进行评估。
-- **--golden <路径>**（可选）：批量评估黄金数据集目录路径。扫描该目录下的 `case-*` 子目录，逐个评估。产出综合评估报告。
-- **--regress <参考路径>**（可选）：与参考输出做回归对比。可以是单文件路径或目录路径。读取参考输出，对比结构与语义差异，分类为改进/退化/不变。
+- **--golden <路径>**（可选）：批量回归评估黄金数据集目录路径。扫描 `case-*` 子目录，读取每个用例的 `input.yaml` args，实际执行目标 skill 生成新输出到 `output/` 子目录，再与 `reference/` 黄金参考做回归对比。产出综合评估报告。
 - **--verbose**（可选）：输出详细判断依据（默认只输出分数和结论）。启用后每项断言和评分的推理过程完整呈现。
 
 ## 三种运行模式
@@ -27,7 +26,7 @@ argument-hint: "[skill-name] [--input <路径>] [--run <skill参数>] [--golden 
 |------|------|------|
 | 事后评估（默认） | `evaluate-skill web-to-local-md --input ./downloaded` | 评估已有输出文件 |
 | 一体化 | `evaluate-skill research-landscape --run "可观测"` | 先执行目标 skill，再评估其输出 |
-| 批量评估 | `evaluate-skill web-to-local-md --golden ./golden/web-to-local-md/` | 逐个评估黄金数据集中的所有 case-* 用例 |
+| 批量评估 | `evaluate-skill web-to-local-md --golden ./golden/web-to-local-md/` | 用 input.yaml args 执行目标 skill 生成新输出，再与 reference/ 回归对比 |
 
 ## 工作流
 
@@ -40,7 +39,7 @@ argument-hint: "[skill-name] [--input <路径>] [--run <skill参数>] [--golden 
 - [ ] 步骤 1：定位 SKILL.md 和输入文件
 - [ ] 步骤 2：通用结构断言
 - [ ] 步骤 3：SKILL.md 合规性评估（LLM-as-Judge）
-- [ ] 步骤 4：回归对比（可选）
+- [ ] 步骤 4：回归对比（仅 --golden）
 - [ ] 步骤 5：聚合与生成评估报告
 ```
 
@@ -64,14 +63,18 @@ Glob: skills/{skill-name}/SKILL.md
    ```bash
    Glob: {golden路径}/case-*/*
    ```
-   每个用例目录应有 `input.yaml`（定义测试输入参数：skill 名称、调用参数、描述、优先级）和 `reference/` 子目录（人工审核过的参考输出）。`input.yaml` 格式：
+   每个用例目录应有 `input.yaml`（定义测试输入参数）和 `reference/` 子目录（人工审核过的黄金参考输出）。`input.yaml` 格式：
    ```yaml
    skill: web-to-local-md
    args: "https://javaguide.cn/ai/ --github-repo Snailclimb/JavaGuide --output-dir ./downloaded"
    description: "JavaGuide AI 章节下载测试"
    priority: high
    ```
-   evaluate-skill 使用 `input.yaml` 中的 `args` 来理解该用例的测试意图，但不自动执行目标 skill（除非 --run 模式）。评估对象是 `reference/` 中的参考输出文件。
+   **关键：`--golden` 模式必须实际执行目标 skill。** 对每个用例，读取 `input.yaml` 的 `args` 字段，以此参数调用目标 skill 生成新输出，再与 `reference/` 中的黄金参考做回归对比。执行方式：
+   ```
+   /good-skills:{skill-name} {args from input.yaml}
+   ```
+   新输出文件写入 `{golden路径}/case-{N}/output/` 子目录（与 `reference/` 平级，便于对比）。步骤 2（结构断言）和步骤 3（合规评分）评估的是新生成的 `output/` 文件；步骤 4（回归对比）将 `output/` 与 `reference/` 对比，发现改进/退化/不变。
 4. 如果以上都未指定 → 在当前目录下自动查找匹配 skill 输出模式的文件。常见模式：
    - `research-landscape` → `research-landscape-report-*.md`
    - `learn-domain` → `learn-domain-guide-*.md`
@@ -82,7 +85,7 @@ Glob: skills/{skill-name}/SKILL.md
 
 ### 步骤 2：通用结构断言
 
-Claude 读输出文件，逐项检查通用断言清单。每项产出 ✅/❌ + 具体问题描述。
+读取输出文件，逐项检查通用断言清单。每项产出 ✅/❌ + 具体问题描述。
 
 断言清单详见 references/structural-checks.md，核心 8 项：
 
@@ -92,17 +95,18 @@ Claude 读输出文件，逐项检查通用断言清单。每项产出 ✅/❌ +
 | 2 | 文件非空（> 100 字符） | Read 文件，检查长度 | 🔴 Critical |
 | 3 | Markdown 可解析（有标题、段落） | Read 文件，检查 `#` 标题和段落存在 | 🟡 Medium |
 | 4 | 无未填充占位符 | Grep 搜索 `{PLACEHOLDER}`、`TODO`、`TBD`、`FIXME` | 🔴 Critical |
-| 5 | URL 是文章级 | 检查 URL 路径深度 ≥ 2 | 🟡 Medium |
-| 6 | 图片引用是本地路径（非 CDN） | 检查 `![](...)` 中无 `http://` 开头的链接 | 🟡 Medium |
-| 7 | 占位标记占比 < 30% | 计算 `[链接暂缺]`、`本期无更新`、`仅标题+链接` 占比 | 🟡 Medium |
-| 8 | 无 Markdown 语法损坏 | 检查表格行列对齐和代码块闭合 | 🟢 Low |
+| 5 | 图片引用是本地路径（非 CDN） | 检查 `![](...)` 中无 `http://` 开头的链接 | 🟡 Medium |
+| 6 | 占位标记占比 < 30% | 计算 `[链接暂缺]`、`本期无更新`、`仅标题+链接` 占比 | 🟡 Medium |
+| 7 | 无 Markdown 语法损坏 | 检查表格行列对齐和代码块闭合 | 🟢 Low |
+
+断言 5（图片路径）仅适用于有图片下载的 skill（如 web-to-local-md）；报告类 skill 标记为"不适用"，不计入通过率。
 
 **执行规则**：
 - 逐项执行，每项记录结果和详情
 - 🔴 Critical 项失败 → 报告"严重问题"标签，需优先修复
 - 🟡 Medium 项失败 → 报告"需关注"标签
 - 🟢 Low 项失败 → 报告"小问题"标签
-- 断言 6（图片路径）仅适用于有图片下载的 skill（如 web-to-local-md）；报告类 skill 标记为"不适用"，不计入通过率
+- 不适用于当前 skill 的断言标记为"不适用"，不计入通过率
 
 通过率 = ✅ 项数 / 总项数（不含"不适用"和"跳过"项）。
 
@@ -110,7 +114,7 @@ Claude 读输出文件，逐项检查通用断言清单。每项产出 ✅/❌ +
 
 ### 步骤 3：SKILL.md 合规性评估（LLM-as-Judge）
 
-Claude 读 SKILL.md + 读输出文件，对照评估输出是否符合 SKILL.md 定义。
+读取 SKILL.md + 输出文件，对照评估输出是否符合 SKILL.md 定义。
 
 评分维度详见 references/scoring-rubric.md（完整 1-5 分定义和判断依据示例）。
 
@@ -129,22 +133,25 @@ Claude 读 SKILL.md + 读输出文件，对照评估输出是否符合 SKILL.md 
 
 **总体评级规则**：
 
-4 维度平均分 → 星级：
-- 平均 ≥ 4.5 → ⭐⭐⭐⭐⭐
-- 平均 ≥ 4.0 → ⭐⭐⭐⭐
-- 平均 ≥ 3.0 → ⭐⭐⭐
-- 平均 ≥ 2.0 → ⭐⭐
-- 平均 < 2.0 → ⭐
+综合评分 = (结构通过率 × 0.3 + 语义平均分换算百分比 × 0.7)，其中语义平均分换算百分比 = 平均分 / 5 × 100%。综合评分 → 星级：
 
-**通过门槛**：每维度 ≥ 3 且平均 ≥ 3.0 为"通过"，否则为"需改进"。
+| 星级 | 综合评分 | 含义 |
+|------|---------|------|
+| ⭐⭐⭐⭐⭐ | ≥ 95% | 接近完美，几乎无需改进 |
+| ⭐⭐⭐⭐ | ≥ 85% | 优质输出，少量可优化点 |
+| ⭐⭐⭐ | ≥ 70% | 可用但有明显缺陷，建议修复 |
+| ⭐⭐ | ≥ 50% | 存在严重问题，需要重大修复 |
+| ⭐ | < 50% | 输出基本不可用 |
+
+**通过门槛**：综合评分 ≥ 70%（⭐⭐⭐ 及以上）为"通过"，否则为"需改进"。
 
 **批量模式**：对每个 case-* 用例独立评分，汇总后计算语义平均分。
 
-### 步骤 4：回归对比（可选，仅 --regress 或 --golden）
+### 步骤 4：回归对比（可选，仅 --golden）
 
-此步骤仅在指定 `--regress` 或 `--golden` 时执行。否则跳过，报告模板中"回归对比"板块填写"未启用"。
+此步骤仅在指定 `--golden` 时执行。否则跳过，报告模板中"回归对比"板块填写"未启用"。
 
-读取参考输出文件（`--regress` 指定的路径或 `--golden` 中每个用例的 `reference/` 目录），Claude 对比两者差异：
+对每个用例，读取 `reference/`（黄金参考）和 `output/`（新生成）的输出文件，对比两者差异：
 
 **对比维度**：
 
@@ -156,22 +163,22 @@ Claude 读 SKILL.md + 读输出文件，对照评估输出是否符合 SKILL.md 
 
 每个差异点分类为：✅ 改进 / ⚠️ 退化 / — 不变。
 
-不做数值 embedding similarity——用 Claude 自身做语义对比，与 skill 生态的纯 Claude 编排风格一致。
+不做数值 embedding similarity——由智能体自身做语义对比，与 skill 生态的纯智能体编排风格一致。
 
-**批量模式**：对每个 case-* 用例的输出与 reference/ 目录中的参考输出做对比。
+**批量模式**：对每个 case-* 用例，将 `output/`（新生成）与 `reference/`（黄金参考）做对比。
 
 ### 步骤 5：聚合与生成评估报告
 
 先 Read references/report-template.md 获取模板结构，然后填充所有 `{PLACEHOLDER}` 变量。
 
-**单用例模式**：生成一份评估报告 `evaluate-skill-report-{skill-name}-{DATE}.md`
+**单用例模式**：生成一份评估报告 `evaluate-skill-report-{skill-name}-{DATETIME}.md`
 
 填充映射：
 
 | 模板变量 | 数据来源 |
 |---------|---------|
 | `{SKILL_NAME}` | 参数 skill-name |
-| `{DATE}` | 今天日期 |
+| `{DATETIME}` | 评估时间，格式 `YYYY-MM-DD-HH`（如 `2026-06-21-14`），用于报告文件名和标题，避免多次评估报告冲突 |
 | `{INPUT_DESCRIPTION}` | 输入文件路径或 `--run` 参数描述 |
 | `{EVAL_MODE}` | "事后评估" / "一体化" / "批量评估" |
 | `{STRUCTURAL_PASSED}` | 步骤 1 中 ✅ 项数 |
@@ -179,6 +186,7 @@ Claude 读 SKILL.md + 读输出文件，对照评估输出是否符合 SKILL.md 
 | `{STRUCTURAL_RESULTS}` | 步骤 1 的逐项结果表格 |
 | `{STRUCTURAL_RATE}` | 通过率百分比 |
 | `{SEMANTIC_AVG}` | 4 维度平均分 |
+| `{COMPOSITE_SCORE}` | 综合评分 = 结构通过率×0.3 + 语义平均分换算百分比×0.7 |
 | `{COMPLETENESS_SCORE}` | 完整性维度分数 |
 | `{COMPLETENESS_EVIDENCE}` | 完整性判断依据 |
 | `{ACCURACY_SCORE}` | 准确性维度分数 |
@@ -205,7 +213,7 @@ Claude 读 SKILL.md + 读输出文件，对照评估输出是否符合 SKILL.md 
 | `{COMMON_ISSUES}` | 出现在 ≥3 个用例中的共性问题 |
 | `{BATCH_IMPROVEMENT_SUGGESTIONS}` | 合并改进建议 |
 
-报告写入 Markdown 文件，命名为 `evaluate-skill-report-{skill-name}-{DATE}.md`。
+报告写入 Markdown 文件，命名为 `evaluate-skill-report-{skill-name}-{DATETIME}.md`。
 
 读取生成的报告并呈现给用户。说明文件路径。
 
@@ -256,7 +264,7 @@ Claude 读 SKILL.md + 读输出文件，对照评估输出是否符合 SKILL.md 
 
 | 局限 | 原因 | 影响 |
 |------|------|------|
-| 黑盒评估 | Claude Code 内部 LLM 调用不可观测 | 只能评估最终输出，无法追踪中间过程 |
+| 黑盒评估 | 智能体内部 LLM 调用不可观测 | 只能评估最终输出，无法追踪中间过程 |
 | LLM-as-Judge 主观性 | 不同运行可能给出不同评分 | 同一份输出跑两次，分数可能有 ±1 波动 |
 | --run 模式成本高 | 先跑目标 skill 再评估 | 双重 token 消耗 |
 | 黄金参考维护成本 | 需要人工标注和更新参考输出 | 参考输出会过时 |
@@ -266,8 +274,9 @@ Claude 读 SKILL.md + 读输出文件，对照评估输出是否符合 SKILL.md 
 
 | 步骤 | 动作 | 工具 |
 |------|------|------|
-| 1. 定位 | Glob 查找 SKILL.md + 输出文件 | Glob, Read |
+| 1. 定位 | Glob 查找 SKILL.md + 输入文件 | Glob, Read |
+| 1a. 执行（仅 --golden） | Read input.yaml args → 调用目标 skill → 写入 output/ | Read, Skill |
 | 2. 断言 | Read 输出文件 → 逐项 ✅/❌ | Read, Grep, Glob |
 | 3. 评分 | Read SKILL.md + 输出文件 → 4 维度 1-5 分 | Read |
-| 4. 回归（可选） | Read 参考输出 → 对比差异 | Read |
+| 4. 回归（仅 --golden） | Read output/ + reference/ → 对比差异 | Read |
 | 5. 报告 | Read 模板 + 填充 → Write 报告文件 | Read, Write |
