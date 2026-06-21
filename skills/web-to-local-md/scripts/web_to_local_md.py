@@ -117,71 +117,6 @@ def strip_frontmatter(content):
     return content
 
 
-def strip_non_html_links(content):
-    """Remove all Markdown [text](url) links from GitHub source .md content.
-
-    These are native Markdown links (not from HTML <a> tags), so they
-    should be converted to plain text per link policy — only preserve
-    links that originate from HTML hyperlinks.
-
-    Handles:
-    - [text](url) → text  (inline links)
-    - [text][ref] → text  (reference-style links)
-    - [ref]: url          (reference definitions, entire line removed)
-    - [[text]] → text     (wiki-style links, rare)
-    - <url>               (autolinks, removed entirely)
-    """
-    # 1. Remove reference-style definition lines: [ref]: url "title"
-    content = re.sub(r'^\s*\[[^\]]+\]:\s+\S+(?:\s+".*?")?\s*$', '', content, flags=re.MULTILINE)
-
-    # 2. Convert reference-style links: [text][ref] or [text][] → text
-    content = re.sub(r'\[([^\]]+)\]\[[^\]]*\]', r'\1', content)
-
-    # 3. Convert inline links: [text](url) → text
-    #    But DO NOT touch image syntax ![alt](url)
-    content = re.sub(r'(?<!\!)\[([^\]]+)\]\([^\)]+\)', r'\1', content)
-
-    # 4. Convert wiki-style links: [[text]] → text
-    content = re.sub(r'\[\[([^\]]+)\]\]', r'\1', content)
-
-    # 5. Remove autolinks: <https://...> → empty
-    content = re.sub(r'<https?://[a-zA-Z0-9._/:-]+>', '', content)
-
-    return content
-
-
-def strip_bare_urls(content):
-    """Remove bare URLs from markdown content (Strategy B post-processing).
-
-    Removes URLs that appear as plain text (not inside Markdown link syntax
-    or image references). Preserves URLs inside:
-    - [text](url) — Markdown links
-    - ![alt](url) — image references
-    """
-    # Use a two-pass approach to avoid mangling URLs inside [...](...) syntax:
-    # Pass 1: Protect Markdown links and images by replacing their URL parts
-    #          with a placeholder.
-    # Pass 2: Remove bare URLs.
-    # Pass 3: Restore protected URLs.
-
-    protected = []
-    def protect(match):
-        protected.append(match.group(0))
-        return f'__PROTECTED_URL_{len(protected) - 1}__'
-
-    # Protect URLs inside Markdown link/image syntax: [...](url)
-    content = re.sub(r'\]\((https?://[^\)]+)\)', protect, content)
-
-    # Now remove bare URLs (those not protected above)
-    content = re.sub(r'https?://[a-zA-Z0-9._/:-]+(?:\?[a-zA-Z0-9=&_-]*)?', '', content)
-
-    # Restore protected URLs
-    for i, url in enumerate(protected):
-        content = content.replace(f'__PROTECTED_URL_{i}__', url)
-
-    return content
-
-
 # ─── Content Extraction (Strategy B) ───
 
 def extract_main_content(html):
@@ -318,11 +253,8 @@ def html_to_markdown(html):
     # Step 2: Strip noise
     clean_html = strip_noise(content_html)
 
-    # Step 3: Convert to Markdown (autolinks=False to avoid <url> autolinks)
-    markdown_text = md_conv(clean_html, heading_style="ATX", bullets="-", autolinks=False)
-
-    # Step 4: Remove bare URLs (preserve [text](url) and ![img](url) syntax)
-    markdown_text = strip_bare_urls(markdown_text)
+    # Step 3: Convert to Markdown
+    markdown_text = md_conv(clean_html, heading_style="ATX", bullets="-")
 
     # Step 4: Clean up excessive whitespace
     # Remove 3+ consecutive blank lines → 2 blank lines
@@ -531,7 +463,6 @@ def main():
 
             if content:
                 content = strip_frontmatter(content)
-                content = strip_non_html_links(content)
                 # Collect remote image URLs
                 all_remote_images.update(extract_image_urls(content))
                 # Fix image paths for local viewing
