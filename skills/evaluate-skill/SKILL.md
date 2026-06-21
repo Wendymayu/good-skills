@@ -178,7 +178,7 @@ Glob: skills/{skill-name}/SKILL.md
 | 模板变量 | 数据来源 |
 |---------|---------|
 | `{SKILL_NAME}` | 参数 skill-name |
-| `{DATETIME}` | 评估时间，格式 `YYYY-MM-DD-HHmm`（如 `2026-06-21-1430`），用于报告文件名和标题，避免多次评估报告冲突 |
+| `{DATETIME}` | 评估时间，格式 `YYYY-MM-DD_HHmm`（如 `2026-06-21_1430`），日期与时间用 `_` 分隔，用于报告文件名和标题，避免多次评估报告冲突 |
 | `{INPUT_DESCRIPTION}` | 输入文件路径或 `--run` 参数描述 |
 | `{EVAL_MODE}` | "事后评估" / "一体化" / "批量评估" |
 | `{STRUCTURAL_PASSED}` | 步骤 1 中 ✅ 项数 |
