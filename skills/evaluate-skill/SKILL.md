@@ -173,6 +173,8 @@ Glob: skills/{skill-name}/SKILL.md
 
 **单用例模式**：生成一份评估报告 `evaluate-skill-report-{skill-name}-{DATETIME}.md`
 
+**批量模式**：生成一份综合评估报告 `evaluate-skill-report-{skill-name}-golden-{DATETIME}.md`
+
 填充映射：
 
 | 模板变量 | 数据来源 |
@@ -213,7 +215,9 @@ Glob: skills/{skill-name}/SKILL.md
 | `{COMMON_ISSUES}` | 出现在 ≥3 个用例中的共性问题 |
 | `{BATCH_IMPROVEMENT_SUGGESTIONS}` | 合并改进建议 |
 
-报告写入 Markdown 文件，命名为 `evaluate-skill-report-{skill-name}-{DATETIME}.md`。
+报告写入 Markdown 文件：
+- 单用例模式：`evaluate-skill-report-{skill-name}-{DATETIME}.md`
+- 批量模式：`evaluate-skill-report-{skill-name}-golden-{DATETIME}.md`
 
 读取生成的报告并呈现给用户。说明文件路径。
 
