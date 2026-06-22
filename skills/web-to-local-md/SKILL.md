@@ -89,9 +89,13 @@ python ${CLAUDE_PLUGIN_ROOT}/scripts/web_to_local_md.py --url "https://example.c
 | Missing publication date | Output MD has title but no date context | Add `<small style="color:gray">YYYY-MM-DD</small>` below the H1 title, using the date from the original page. Only add the date — no author, category, or other metadata (handled by `extract_page_metadata()`) |
 | Missing H1 title | Output starts with `##` or plain text | Extract `<h1>` or `<title>` before noise stripping; inject as `# title` first line (handled by `extract_page_metadata()`) |
 | "Copy"/"复制代码" artifacts | Button text appears in code blocks | `clean_html_artifacts()` removes these; copy-button classes in `NOISE_CLASSES` |
-| Next.js proxy image URLs | `/_next/image?url=...` not downloaded | Decode nested URL parameter via `urllib.parse.unquote`; add `.awebp` to extension list |
-| byteimg signed image URLs | CDN URLs with `~tplv-xxx` and `.awebp` | Expand regex character class to include `~`; add `.awebp` extension; handle `%` in query params |
-| Empty image alt text | `![](path)` or `![image.png](path)` | `fill_image_alt_text()` derives alt from filename (strip ext, replace `-/_` with spaces) |
+| byteimg signed image URLs | CDN URLs with `~tplv-xxx:0:0:0:0:token:q75.awebp` (contains `:`, crashes Windows filenames) | Match any `https://…​.<ext>` URL (regex allows `:` in path); `sanitize_filename()` replaces `:`/`<`/`>`/`|`/`?`/`*` with `-` before saving |
+| Image filename mismatch / collision | Markdown references `images/foo.png` but the saved file is `images/<hash>-foo.png`; distinct images collapse to one name | Use ONE `url_to_local_filename()` for BOTH the markdown reference and the saved file — never strip the hash prefix from one side only |
+| WordPress image-gallery tables | `<table><td><figure><img></figure></td></table>` → `| --- |` empty placeholders, 0 image refs | `convert_image_tables()` unwraps such tables into `<p><img></p>` before markdownify |
+| H1 title mojibake (Strategy A) | H1 shows `å¤§æ¨¡å…` instead of `大模型` — only the injected H1 is garbled, body is fine | `fetch_url()` sets `r.encoding = r.apparent_encoding` so sites omitting charset don't decode as ISO-8859-1 |
+| Escaped bold `\\\*\\\*text\\\*\\\*` | markdownify escapes `*` in some contexts → bold won't render | `clean_html_artifacts()` unescapes `\\\*\\\*…\\\*\\\*` → `**…**` |
+| Publication date above H1 | `<small>` date lands on line 1 (before the H1) instead of below it | `inject_metadata()` inserts the date on the line immediately AFTER the existing H1, never as a prefix |
+| Empty image alt text | `![](path)` or `![image.png](path)`, or alt = 40-char hash | `enrich_image_alts()` fills alt from `<figcaption>`/`title` first; `fill_image_alt_text()` falls back to filename, but returns generic `image` for hash-dominated names |
 
 ## Real-World Impact
 

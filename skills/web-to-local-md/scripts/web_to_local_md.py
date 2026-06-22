@@ -41,6 +41,10 @@ def fetch_url(url, headers=None, timeout=15):
     try:
         r = req_lib.get(url, headers=h, timeout=timeout, allow_redirects=True)
         if r.status_code == 200:
+            # Force correct decode: many sites (e.g. javaguide.cn) omit charset
+            # in headers, causing requests.text to fall back to ISO-8859-1 and
+            # produce mojibake for Chinese text. apparent_encoding detects it.
+            r.encoding = r.apparent_encoding or 'utf-8'
             return r.text
         print(f"  HTTP {r.status_code} for {url}")
         return None
@@ -241,30 +245,50 @@ def extract_page_metadata(html):
 def inject_metadata(markdown_text, title, date_str):
     """Inject H1 title and <small> publication date into markdown if missing.
 
-    Order: # H1 title first, then <small> date below it.
-    If the markdown already has a # H1 line, skip title injection.
-    If it already has a <small> date line, skip date injection.
-    Date is NEVER placed before H1 — if no H1 and no title, skip date too.
+    Layout: `# H1 title` on its own line, with `<small ...>YYYY-MM-DD</small>`
+    on the line immediately below it (separated by a blank line).
+
+    - If no H1 exists and a title is known: prepend `# title` + date below it.
+    - If an H1 already exists: insert the date right BELOW the H1 line.
+    - The date is NEVER placed above the H1.
+    - Skips an element if it is already present.
     """
+    if not markdown_text:
+        return markdown_text
+
     lines = markdown_text.split('\n')
 
-    has_h1 = any(line.startswith('# ') and not line.startswith('## ') for line in lines[:5])
-    has_date = any('<small style="color:gray">' in line for line in lines[:10])
+    # Locate existing top-level H1 (search the first several lines)
+    h1_idx = None
+    for i, line in enumerate(lines[:8]):
+        if line.startswith('# ') and not line.startswith('## '):
+            h1_idx = i
+            break
+    has_h1 = h1_idx is not None
+    has_date = any('<small style="color:gray">' in line for line in lines[:12])
 
-    prefix_lines = []
-    if title and not has_h1:
-        prefix_lines.append(f'# {title}')
-        prefix_lines.append('')
-    # Only inject date if we have an H1 (either existing or newly injected)
-    if date_str and not has_date:
-        # Ensure there's an H1 before injecting date
-        will_have_h1 = has_h1 or (title and not has_h1)
-        if will_have_h1:
-            prefix_lines.append(f'<small style="color:gray">{date_str}</small>')
-            prefix_lines.append('')
+    # Case 1: no H1 — prepend title, then date below it
+    if not has_h1 and title:
+        prefix = [f'# {title}', '']
+        if date_str and not has_date:
+            prefix.append(f'<small style="color:gray">{date_str}</small>')
+            prefix.append('')
+        return '\n'.join(prefix + lines)
 
-    if prefix_lines:
-        return '\n'.join(prefix_lines + lines)
+    # Case 2: H1 exists — insert date immediately below the H1 line
+    if has_h1 and date_str and not has_date:
+        idx = h1_idx + 1
+        if idx < len(lines) and lines[idx].strip() == '':
+            # There's already a blank line after H1 — insert date after it
+            lines.insert(idx + 1, f'<small style="color:gray">{date_str}</small>')
+            if idx + 2 >= len(lines) or lines[idx + 2].strip() != '':
+                lines.insert(idx + 2, '')
+        else:
+            # No blank after H1 — add one, then date, then blank
+            lines.insert(idx, '')
+            lines.insert(idx + 1, f'<small style="color:gray">{date_str}</small>')
+            lines.insert(idx + 2, '')
+        return '\n'.join(lines)
 
     return markdown_text
 
@@ -439,14 +463,84 @@ def clean_html_artifacts(markdown_text):
     # Remove empty table separator rows (all cells empty or just whitespace)
     markdown_text = re.sub(r'^\s*\|\s*(?:\s*\|\s*)+\s*$', '', markdown_text, flags=re.MULTILINE)
 
+    # Fix escaped emphasis (markdownify escapes * inside some text):
+    # \*\*bold\*\* → **bold**
+    markdown_text = re.sub(r'\\\*\\\*([^*]+?)\\\*\\\*', r'**\1**', markdown_text)
+
     return markdown_text
+
+
+def enrich_image_alts(html):
+    """Fill missing/empty <img> alt from context before markdownify.
+
+    Priority:
+    1. Existing non-empty alt attribute (kept as-is)
+    2. <figcaption> text inside the enclosing <figure>
+    3. title attribute on the <img>
+    Images with no discoverable alt are left empty; fill_image_alt_text()
+    derives a filename-based fallback later.
+    """
+    from bs4 import BeautifulSoup
+
+    if not html:
+        return html
+    soup = BeautifulSoup(html, 'html.parser')
+    for img in soup.find_all('img'):
+        alt = (img.get('alt') or '').strip()
+        if alt:
+            continue
+        caption = None
+        figure = img.find_parent('figure')
+        if figure:
+            figcap = figure.find('figcaption')
+            if figcap:
+                # Use ' ' separator so words around <a>/<span> children don't
+                # run together (e.g. "theSwiss Cheese Modelfrom" → "the Swiss Cheese Model from")
+                caption = figcap.get_text(' ', strip=True)
+                caption = re.sub(r'\s+', ' ', caption).strip()
+        if not caption:
+            title_attr = (img.get('title') or '').strip()
+            if title_attr:
+                caption = title_attr
+        if caption:
+            img['alt'] = caption
+    return str(soup)
+
+
+def convert_image_tables(html):
+    """Convert <table> elements that contain images into sequential <p><img></p>.
+
+    WordPress image galleries use
+    <table><tr><td><figure><img></figure></td></tr></table>
+    which markdownify renders as broken empty tables (| --- |) and drops the
+    images entirely. This unwraps such galleries into simple image paragraphs
+    so each image becomes a ![...](...) reference.
+    """
+    from bs4 import BeautifulSoup
+
+    if not html:
+        return html
+    soup = BeautifulSoup(html, 'html.parser')
+    for table in soup.find_all('table'):
+        imgs = table.find_all('img')
+        if not imgs:
+            continue
+        # Move each image into its own <p> before the table, then drop the table
+        for img in imgs:
+            img = img.extract()
+            p = soup.new_tag('p')
+            p.append(img)
+            table.insert_before(p)
+        table.decompose()
+    return str(soup)
 
 
 def html_to_markdown(html):
     """Convert HTML content to Markdown using extract + strip_noise + markdownify.
 
-    Pipeline: extract_main → strip_noise → unwrap_anchor_headers → md_conv
-              → clean_html_artifacts → inject_metadata → whitespace cleanup
+    Pipeline: extract_main → extract_images_from_html → strip_noise
+              → enrich_image_alts → convert_image_tables → unwrap_anchor_headers
+              → md_conv → clean_html_artifacts → inject_metadata → whitespace cleanup
 
     Returns (markdown_text, title, date_str, nested_images) tuple on success,
     (None, None, None, set()) if content is too short/empty.
@@ -467,6 +561,12 @@ def html_to_markdown(html):
 
     # Step 2: Strip noise
     clean_html = strip_noise(content_html)
+
+    # Step 2a: Enrich <img> alt from <figcaption>/title before conversion
+    clean_html = enrich_image_alts(clean_html)
+
+    # Step 2b: Convert image-gallery tables into <p><img></p> (WordPress fix)
+    clean_html = convert_image_tables(clean_html)
 
     # Step 3: Unwrap anchor-only headers (before markdownify)
     clean_html = unwrap_anchor_headers(clean_html)
@@ -497,29 +597,58 @@ def html_to_markdown(html):
 def extract_image_urls(content):
     """Extract all remote image URLs from content (Markdown or HTML).
 
-    Handles standard CDN URLs, byteimg signed URLs (with ~tplv in path),
+    Handles standard CDN URLs, byteimg signed URLs (with : and ~tplv in path),
     and Next.js /_next/image proxy URLs with encoded nested URLs.
     """
     urls = set()
-    # Standard CDN URLs — expanded with .awebp and ~ in path/filename
-    pattern = r'https://[a-zA-Z0-9._/~-]+/[a-zA-Z0-9._~-]+\.(?:png|jpg|jpeg|gif|svg|webp|avif|awebp)(?:\?[a-zA-Z0-9=%&_.+-]*)?'
+    # Any https URL ending in an image extension (query/hash allowed after).
+    # The char class excludes whitespace, quotes, and markdown/HTML delimiters
+    # ( ), <, >) so the match stops cleanly at the closing ) of ![alt](url)
+    # or the quote of src="url". This also matches byteimg signed URLs whose
+    # path contains ':' (e.g. ~tplv-x:0:0:0:0:token:q75.awebp).
+    pattern = r'https://[^\s"\'<>)]+\.(?:png|jpg|jpeg|gif|svg|webp|avif|awebp)(?:[?#][^\s"\'<>)]*)?'
     for url in re.findall(pattern, content):
         urls.add(url)
 
-    # Byteimg signed URLs: xxx~tplv-xxx.awebp?x-expires=...&x-signature=...
-    # The ~tplv suffix makes the filename part longer than [a-zA-Z0-9._~-]+ can handle
-    # because it includes URL-encoded segments. Use a broader pattern.
-    byteimg_pattern = r'https://[a-zA-Z0-9._/~-]+/[a-zA-Z0-9._~%-]+\.(?:png|jpg|jpeg|gif|svg|webp|avif|awebp)(?:~[a-zA-Z0-9._%-]+)?(?:\?[a-zA-Z0-9=%&_.+~-]*)?'
-    for url in re.findall(byteimg_pattern, content):
-        urls.add(url)
-
-    # Next.js /_next/image proxy: decode nested url parameter
-    next_pattern = r'/_next/image\?url=(https?%3A%2F%2F[a-zA-Z0-9._/~%-]+(?:\.[a-zA-Z0-9._~-]+(?:\.(?:png|jpg|jpeg|gif|svg|webp|avif|awebp)))?[a-zA-Z0-9./%~_-]*)(?:&[^"\'\\)]*)?'
+    # Next.js /_next/image proxy: decode nested url parameter to the real CDN URL
+    next_pattern = r'/_next/image\?url=(https?%3A%2F%2F[^\s"\'<>)]+)'
     for encoded_url in re.findall(next_pattern, content):
-        real_url = urllib.parse.unquote(encoded_url)
-        urls.add(real_url)
+        # The captured value may include trailing &w=...&q=... params; take only the url= value
+        real_url = urllib.parse.unquote(encoded_url.split('&')[0])
+        if re.search(r'\.(?:png|jpg|jpeg|gif|svg|webp|avif|awebp)', real_url, re.IGNORECASE):
+            urls.add(real_url)
 
     return urls
+
+
+def sanitize_filename(name):
+    """Make a filename safe for Windows/Linux by replacing illegal chars.
+
+    Windows forbids: < > : " | ? *  plus control chars and trailing dots/spaces.
+    byteimg signed URLs contain ':' (e.g. ~tplv-x:0:0:0:0:token:q75.awebp)
+    which would crash the download on Windows.
+    """
+    if not name:
+        return 'image'
+    name = urllib.parse.unquote(name)  # decode %20 etc.
+    name = re.sub(r'[<>:"|?*\x00-\x1f]', '-', name)
+    name = name.replace(' ', '_')
+    name = re.sub(r'-{2,}', '-', name)
+    name = name.rstrip('. ')
+    return name or 'image'
+
+
+def url_to_local_filename(url):
+    """Compute the local filename for a remote image URL.
+
+    Uses the URL basename (decoded, sanitized for Windows). This SINGLE
+    function is called by both fix_image_paths() (markdown reference) and the
+    download loop (saved file), guaranteeing the reference and file always
+    match and never collide (distinct URLs keep distinct basenames).
+    """
+    path = url.split('?')[0].split('#')[0]
+    base = os.path.basename(path)
+    return sanitize_filename(base)
 
 
 def download_image(url, save_path):
@@ -551,75 +680,33 @@ def get_image_prefix(subdir):
 def fix_image_paths(content, subdir):
     """Replace remote image URLs with local relative paths.
 
-    Handles standard CDN URLs, byteimg signed URLs, and Next.js proxy URLs.
-    Uses human-readable filenames where possible (strips hash prefix,
-    removes ~tplv suffix, cleans up query params).
+    Uses url_to_local_filename() for the local name so the markdown reference
+    matches the downloaded file exactly (no hash-stripping collisions).
+    Handles standard CDN URLs, byteimg signed URLs (with : and ~tplv), and
+    Next.js /_next/image proxy URLs.
     """
     prefix = get_image_prefix(subdir)
 
-    def make_readable_filename(url):
-        """Generate a human-readable filename from an image URL.
-
-        Handles:
-        - Standard URLs: use basename (e.g. 'anthropic-evals-1.png')
-        - Hash-prefixed URLs: strip leading hash (e.g. 'bd42e7b2f-4584x2834.png' → '4584x2834.png')
-        - Byteimg signed URLs: strip ~tplv suffix (e.g. 'xxx~tplv-73owjymdk6.awebp' → 'xxx.awebp')
-        - Query params: stripped (filename = basename only)
-        """
-        raw = os.path.basename(url.split('?')[0])
-        # Strip ~tplv suffix from byteimg filenames
-        tilde_idx = raw.find('~tplv')
-        if tilde_idx > 0:
-            raw = raw[:tilde_idx]
-        # Strip leading hash prefix (common in Next.js CDN): 8+ hex chars followed by -
-        m = re.match(r'^[a-f0-9]{8,}-', raw)
-        if m:
-            raw = raw[len(m.group(0)):]
-        # Clean up remaining % encodings
-        raw = raw.replace('%20', '')
-        return raw
-
     def replace_url(match):
-        url = match.group(0)
-        filename = make_readable_filename(url)
-        return prefix + filename
+        return prefix + url_to_local_filename(match.group(0))
 
-    # Replace standard remote image URLs (any domain)
+    # Any https URL ending in an image extension (matches byteimg : URLs too)
     content = re.sub(
-        r'https://[a-zA-Z0-9._/~-]+/[a-zA-Z0-9._~-]+\.(?:png|jpg|jpeg|gif|svg|webp|avif|awebp)(?:\?[a-zA-Z0-9=%&_.+-]*)?',
+        r'https://[^\s"\'<>)]+\.(?:png|jpg|jpeg|gif|svg|webp|avif|awebp)(?:[?#][^\s"\'<>)]*)?',
         replace_url, content
     )
 
-    # Replace byteimg signed URLs (broader pattern for ~tplv suffix)
-    def replace_byteimg_url(match):
-        url = match.group(0)
-        filename = make_readable_filename(url)
-        return prefix + filename
-
-    content = re.sub(
-        r'https://[a-zA-Z0-9._/~-]+/[a-zA-Z0-9._~%-]+\.(?:png|jpg|jpeg|gif|svg|webp|avif|awebp)(?:~[a-zA-Z0-9._%-]+)?(?:\?[a-zA-Z0-9=%&_.+~-]*)?',
-        replace_byteimg_url, content
-    )
-
-    # Replace Next.js /_next/image proxy URLs — decode and get real image URL, then localize
+    # Next.js /_next/image proxy URLs — decode nested url param, then localize
     def replace_next_url(match):
-        encoded_url = match.group(1)
-        real_url = urllib.parse.unquote(encoded_url)
-        filename = make_readable_filename(real_url)
-        return prefix + filename
+        encoded = match.group(1).split('&')[0]
+        real_url = urllib.parse.unquote(encoded)
+        return prefix + url_to_local_filename(real_url)
 
     content = re.sub(
-        r'/_next/image\?url=(https?%3A%2F%2F[a-zA-Z0-9._/~%-]+(?:\.[a-zA-Z0-9._~-]+(?:\.(?:png|jpg|jpeg|gif|svg|webp|avif|awebp)))?[a-zA-Z0-9./%~_-]*)(?:&[^"\'\\)]*)?',
+        r'/_next/image\?url=(https?%3A%2F%2F[^\s"\'<>)]+)',
         replace_next_url, content
     )
 
-    # Fix %20 in filenames
-    content = content.replace('%20.png', '.png')
-    content = content.replace('%20.svg', '.svg')
-    content = content.replace('%20.jpg', '.jpg')
-    content = content.replace('%20.jpeg', '.jpeg')
-    content = content.replace('%20.awebp', '.awebp')
-    content = content.replace('%20.webp', '.webp')
     return content
 
 
@@ -633,16 +720,26 @@ def fill_image_alt_text(content):
     Also cleans up alt text that contains URL garbage (tplv, signatures, etc).
     """
     def derive_alt(path):
-        """Derive alt text from image filename: strip extension, replace -/_ with spaces."""
+        """Derive alt text from image filename: strip extension, replace -/_ with spaces.
+
+        If the name is dominated by a hex hash or dimension string (no real
+        words), return a clean generic 'image' instead of dumping a 40-char
+        hash on the reader.
+        """
         basename = os.path.basename(path)
         # Remove extension
         name = re.sub(r'\.(?:png|jpg|jpeg|gif|svg|webp|avif|awebp)$', '', basename, flags=re.IGNORECASE)
-        # Replace - and _ with spaces
-        name = name.replace('-', ' ').replace('_', ' ')
-        # Capitalize first letter
-        if name:
-            name = name[0].upper() + name[1:]
-        return name or 'image'
+        name = name.replace('%20', ' ').replace('-', ' ').replace('_', ' ')
+        name = re.sub(r'\s+', ' ', name).strip()
+        if not name:
+            return 'image'
+        # Detect hash/dimension-dominated names: strip hex digits, 'x', dims;
+        # if almost nothing meaningful remains, it's not descriptive.
+        meaningful = re.sub(r'[0-9a-fA-F]', '', name).replace('x', '').strip()
+        if len(meaningful) < 3:
+            return 'image'
+        name = name[0].upper() + name[1:]
+        return name
 
     # Fill empty alt text: ![](path) → ![derived](path)
     def replace_empty_alt(match):
@@ -860,7 +957,7 @@ def main():
     img_fail = 0
 
     for img_url in sorted(all_remote_images):
-        img_filename = os.path.basename(img_url.split('?')[0])
+        img_filename = url_to_local_filename(img_url)
         img_save_path = os.path.join(img_dir, img_filename)
 
         if os.path.exists(img_save_path):

@@ -115,7 +115,7 @@ output/
 3. Common date class names: `.post-date`, `.pub-date`, `.article-date`, `.date`, `.post-meta`, `.entry-date`, etc.
 4. `<small>`/`<span>` elements containing YYYY-MM-DD patterns
 
-`inject_metadata()` adds `<small style="color:gray">YYYY-MM-DD</small>` on line 3 if no date marker exists in the first 10 lines. Only the date is added — no author, category, or other metadata.
+`inject_metadata()` adds `<small style="color:gray">YYYY-MM-DD</small>` on the line immediately **below** the H1 title (separated by a blank line) if no date marker exists in the first 12 lines. The date is **never** placed above the H1: if an H1 already exists, the date is inserted right after it rather than prepended. Only the date is added — no author, category, or other metadata.
 
 **Code**: `web_to_local_md.py` → `extract_page_metadata()`, `inject_metadata()`
 
@@ -125,11 +125,51 @@ output/
 
 **Root cause**: `extract_image_urls()` regex required the extension to be on the final path segment. `/_next/image?url=https%3A//cdn.example.com/photo.png` doesn't match because the path part is just `image`.
 
-**Solution**: Added a separate regex pass for `/_next/image` patterns. The nested `url` query parameter is decoded via `urllib.parse.unquote()` to extract the real CDN image URL. Both `extract_image_urls()` and `fix_image_paths()` handle these proxy URLs.
+**Solution**: Added a robust image-URL regex that matches any `https://…​.<ext>` URL, allowing `:`, `~`, `%` in the path — so byteimg signed URLs like `…​~tplv-xxx:0:0:0:0:token:q75.awebp` are matched. The nested `url` query parameter in `/_next/image` proxy URLs is decoded via `urllib.parse.unquote()` to extract the real CDN image URL. Both `extract_image_urls()` and `fix_image_paths()` use the same pattern.
 
-**Also fixed**: `.awebp` extension (WebP variant used by byteimg CDN) added to all image regex patterns. Character classes expanded to include `~` (byteimg `~tplv-xxx` suffix) and `%` (URL-encoded characters).
+**Also fixed**: byteimg paths contain `:` which is illegal in Windows filenames and crashed `download_image()` with `OSError`. `sanitize_filename()` replaces `:`/`<`/`>`/`"`/`|`/`?`/`*` with `-` before saving. `.awebp` extension (WebP variant used by byteimg CDN) is in the extension list.
 
-**Code**: `web_to_local_md.py` → `extract_image_urls()`, `fix_image_paths()`
+**Code**: `web_to_local_md.py` → `extract_image_urls()`, `fix_image_paths()`, `sanitize_filename()`
+
+## Issue 12: Image Filename Mismatch / Collision
+
+**Problem**: Markdown referenced a *simplified* filename (`images/4584x2580.png`) while the download saved the *original* basename (`images/0205b36f…​-4584x2580.png`). The mismatch meant Typora couldn't find the file, and 4 distinct images all collapsed to the same simplified name.
+
+**Root cause**: `fix_image_paths()` stripped the leading hash from the filename, but the download loop in `main()` used the raw `os.path.basename`. The two sides diverged.
+
+**Solution**: A single `url_to_local_filename(url)` function is now used by BOTH the markdown reference and the saved file, so they always match. The hash prefix is **kept** (not stripped) — distinct URLs keep distinct basenames, eliminating collisions. `sanitize_filename()` handles Windows-illegal chars on both sides too.
+
+**Code**: `web_to_local_md.py` → `url_to_local_filename()`, `fix_image_paths()`, download loop in `main()`
+
+## Issue 13: WordPress Image-Gallery Tables → Zero Image References
+
+**Problem**: 26 image files were downloaded but **zero** `![…​]()` references appeared in the markdown — all image positions rendered as `| --- |` empty table placeholders.
+
+**Root cause**: WordPress galleries use `<table><tr><td><figure><img></figure></td></tr></table>`. `markdownify` converts this into a broken table with empty cells and drops the images entirely.
+
+**Solution**: `convert_image_tables()` runs after `strip_noise()` and before `markdownify`. It detects any `<table>` containing `<img>` elements and unwraps it into sequential `<p><img></p>` paragraphs, so each image becomes a normal `![…​]()` reference.
+
+**Code**: `web_to_local_md.py` → `convert_image_tables()`
+
+## Issue 14: H1 Title Mojibake (Strategy A)
+
+**Problem**: The injected H1 showed `å¤§æ¨¡å…` instead of `大模型基础面试题总结`, while the rest of the body rendered correctly.
+
+**Root cause**: `fetch_url()` returned `r.text`, and `requests` falls back to ISO-8859-1 when a site (e.g. javaguide.cn) omits `charset` from its response headers. The Strategy A page HTML was therefore mojibake, and `extract_page_metadata()` extracted a garbled title that `inject_metadata()` then prepended as the H1. The GitHub `.md` body itself was fine (downloaded via `r.content.decode('utf-8')`).
+
+**Solution**: `fetch_url()` sets `r.encoding = r.apparent_encoding or 'utf-8'`, letting `chardet` detect the real encoding before `r.text` decodes.
+
+**Code**: `web_to_local_md.py` → `fetch_url()`
+
+## Issue 15: Descriptive Image Alt from figcaption
+
+**Problem**: Image alt text was a 40-char hash or dimension string (`1c5fff78273feaf4892b46ad3fb757956195300`, `4584x2580`) instead of a description like `重构时间线与执行路径`.
+
+**Root cause**: `fill_image_alt_text()` derived alt only from the filename. Hash-dominated filenames can't yield semantic text.
+
+**Solution**: Two layers. (1) `enrich_image_alts()` runs **before** markdownify and fills a missing `<img>` alt from `<figcaption>` (inside the enclosing `<figure>`) or the `title` attribute — this recovers descriptive captions that WordPress/AWS galleries attach. (2) `fill_image_alt_text()` still falls back to the filename, but `derive_alt()` now detects hash/dimension-dominated names and returns a clean `image` instead of dumping the hash on the reader.
+
+**Code**: `web_to_local_md.py` → `enrich_image_alts()`, `derive_alt()`
 
 ## Issue 11: HTML Artifacts Not Cleaned
 
@@ -137,10 +177,10 @@ output/
 
 **Root cause**: Copy button classes (`copy`, `copy-code-btn`) were not in `NOISE_CLASSES`. markdownify converts anchor-only `<a>` wrappers inside headings into `[Title](#title)` links. Empty table rows are HTML rendering artifacts.
 
-**Solution**: Three-part fix:
+**Solution**: Four-part fix:
 1. **NOISE_CLASSES expanded**: Added `copy`, `copy-button`, `copy-code-btn`, `copy-action`, `sponsor`, `affiliate`, `newsletter`, `subscribe`, `cta`, `author-info`, `reading-time`, `view-count`, etc.
 2. **`unwrap_anchor_headers()`**: Preprocesses HTML before markdownify — unwraps `<a class="header-anchor">` inside `<h1>`-`<h6>` tags, keeping inner `<span>` text.
-3. **`clean_html_artifacts()`**: Post-processes markdown after markdownify — removes standalone "Copy"/"复制代码" lines, cleans `## [Title](#title)` → `## Title`, removes empty table separator rows.
+3. **`clean_html_artifacts()`**: Post-processes markdown after markdownify — removes standalone "Copy"/"复制代码" lines, cleans `## [Title](#title)` → `## Title`, removes empty table separator rows, and unescapes `**text**` (markdownify's escaped bold `\*\*text\*\*`).
 
 **Code**: `web_to_local_md.py` → `NOISE_CLASSES`, `unwrap_anchor_headers()`, `clean_html_artifacts()`
 - Fallback: `<body>` with noise removed (nav/header/footer/aside + class/id-based noise stripping with word-boundary anchors)
