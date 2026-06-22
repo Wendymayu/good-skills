@@ -1,7 +1,7 @@
 ---
 name: evaluate-skill
 description: Use when the user asks to "evaluate", "评估", "验证", "质量检查" a skill's output quality. Evaluates any good-skills skill using SKILL.md as rubric with structural assertions + LLM-as-Judge compliance scoring. Supports single-case, batch, and run-then-evaluate modes.
-allowed-tools: Read, Write, Glob, Grep, WebSearch, WebFetch, TodoWrite, Skill
+allowed-tools: Read, Write, Glob, Grep, WebSearch, WebFetch, TodoWrite, Skill, Bash
 argument-hint: "[skill-name] [--input <路径>] [--run <skill参数>] [--golden <路径>] [--verbose]"
 ---
 
@@ -17,7 +17,7 @@ argument-hint: "[skill-name] [--input <路径>] [--run <skill参数>] [--golden 
 - **skill-name**（必填）：要评估的 skill 名称（如 `web-to-local-md`、`research-landscape`、`learn-domain`）。空参数 = 报错，必须询问用户想评估哪个 skill。
 - **--input <路径>**（可选）：指定已有输出文件路径。事后评估模式——评估已存在的输出文件。默认：在当前目录下自动查找匹配 skill 输出模式的文件（如 `research-landscape-report-*.md`、`learn-domain-guide-*.md`）。
 - **--run <skill参数>**（可选）：先执行目标 skill 再评估其输出。`<skill参数>` 是目标 skill 的完整参数字符串（如 `--run "可观测 --since 2026-05-01"`）。evaluate-skill 会先调用目标 skill，然后自动定位其输出文件进行评估。
-- **--golden <路径>**（可选）：批量回归评估黄金数据集目录路径。扫描 `case-*` 子目录，读取每个用例的 `input.yaml` args，实际执行目标 skill 生成新输出到 `output/` 子目录，再与 `reference/` 黄金参考做回归对比。产出综合评估报告。
+- **--golden <路径>**（可选）：批量回归评估黄金数据集目录路径。扫描 `case-*` 子目录，读取每个用例的 `input.yaml` args，实际执行目标 skill，再与 `reference/` 黄金参考做回归对比。产出综合评估报告。**所有生成文件写入当前项目目录下的 `output/{skill-name}/{DATETIME}/`，不写入黄金数据集目录，防止污染评测集项目。**
 - **--verbose**（可选）：输出详细判断依据（默认只输出分数和结论）。启用后每项断言和评分的推理过程完整呈现。
 
 ## 三种运行模式
@@ -70,12 +70,12 @@ Glob: skills/{skill-name}/SKILL.md
    description: "JavaGuide AI 章节下载测试"
    priority: high
    ```
-   **关键：`--golden` 模式必须实际执行目标 skill，不得使用旧的 `output/` 文件。** 对每个用例：
-   1. **删除旧的 `output/` 目录**：`rm -rf {golden路径}/case-{N}/output/`，确保生成全新输出
+   **关键：`--golden` 模式必须实际执行目标 skill，不得使用旧输出文件。所有生成文件写入当前项目目录下的 `output/{skill-name}/{DATETIME}/`，不写入黄金数据集目录。** 对每个用例：
+   1. 创建输出目录：`mkdir -p output/{skill-name}/{DATETIME}/case-{N}`
    2. 读取 `input.yaml` 的 `args` 字段
-   3. 以此参数调用目标 skill：`/good-skills:{skill-name} {args from input.yaml}`
-   4. 将 skill 生成的输出文件移动/复制到 `{golden路径}/case-{N}/output/` 子目录（与 `reference/` 平级）
-   5. 步骤 2（结构断言）和步骤 3（合规评分）评估的是**新生成**的 `output/` 文件；步骤 4（回归对比）将 `output/` 与 `reference/` 对比
+   3. 以此参数调用目标 skill：`/good-skills:{skill-name} {args from input.yaml}`，注意：如果 `args` 中包含 `--output-dir` 参数，需要替换为 `output/{skill-name}/{DATETIME}/case-{N}`
+   4. skill 生成的输出文件会出现在 `output/{skill-name}/{DATETIME}/case-{N}/` 目录下
+   5. 步骤 2（结构断言）和步骤 3（合规评分）评估的是 `output/{skill-name}/{DATETIME}/case-{N}/` 中的**新生成**文件；步骤 4（回归对比）将新生成文件与 `{golden路径}/case-{N}/reference/` 黄金参考对比
 4. 如果以上都未指定 → 在当前目录下自动查找匹配 skill 输出模式的文件。常见模式：
    - `research-landscape` → `research-landscape-report-*.md`
    - `learn-domain` → `learn-domain-guide-*.md`
@@ -152,7 +152,7 @@ Glob: skills/{skill-name}/SKILL.md
 
 此步骤仅在指定 `--golden` 时执行。否则跳过，报告模板中"回归对比"板块填写"未启用"。
 
-对每个用例，读取 `reference/`（黄金参考）和 `output/`（新生成）的输出文件，对比两者差异：
+对每个用例，读取 `reference/`（黄金参考，位于 `{golden路径}/case-{N}/reference/`）和新生成文件（位于 `output/{skill-name}/{DATETIME}/case-{N}/`），对比两者差异：
 
 **对比维度**：
 
@@ -166,7 +166,7 @@ Glob: skills/{skill-name}/SKILL.md
 
 不做数值 embedding similarity——由智能体自身做语义对比，与 skill 生态的纯智能体编排风格一致。
 
-**批量模式**：对每个 case-* 用例，将 `output/`（新生成）与 `reference/`（黄金参考）做对比。
+**批量模式**：对每个 case-* 用例，将 `output/{skill-name}/{DATETIME}/case-{N}/`（新生成）与 `{golden路径}/case-{N}/reference/`（黄金参考）做对比。
 
 ### 步骤 5：聚合与生成评估报告
 
@@ -216,9 +216,11 @@ Glob: skills/{skill-name}/SKILL.md
 | `{COMMON_ISSUES}` | 出现在 ≥3 个用例中的共性问题 |
 | `{BATCH_IMPROVEMENT_SUGGESTIONS}` | 合并改进建议 |
 
-报告写入 Markdown 文件：
-- 单用例模式：`evaluate-skill-report-{skill-name}-{DATETIME}.md`
-- 批量模式：`evaluate-skill-report-{skill-name}-golden-{DATETIME}.md`
+报告写入 Markdown 文件，统一放在当前项目目录下的 `output/{skill-name}/{DATETIME}/` 目录中：
+- 单用例模式：`output/{skill-name}/{DATETIME}/evaluate-skill-report-{skill-name}-{DATETIME}.md`
+- 批量模式：`output/{skill-name}/{DATETIME}/evaluate-skill-report-{skill-name}-golden-{DATETIME}.md`
+
+**所有生成文件都在项目本地 `output/` 目录下，不写入黄金数据集或源代码目录，防止污染。**
 
 读取生成的报告并呈现给用户。说明文件路径。
 
@@ -280,8 +282,8 @@ Glob: skills/{skill-name}/SKILL.md
 | 步骤 | 动作 | 工具 |
 |------|------|------|
 | 1. 定位 | Glob 查找 SKILL.md + 输入文件 | Glob, Read |
-| 1a. 执行（仅 --golden） | Read input.yaml args → 调用目标 skill → 写入 output/ | Read, Skill |
+| 1a. 执行（仅 --golden） | Read input.yaml args → 调用目标 skill → 写入 `output/{skill-name}/{DATETIME}/case-{N}/` | Read, Skill, Bash |
 | 2. 断言 | Read 输出文件 → 逐项 ✅/❌ | Read, Grep, Glob |
 | 3. 评分 | Read SKILL.md + 输出文件 → 4 维度 1-5 分 | Read |
-| 4. 回归（仅 --golden） | Read output/ + reference/ → 对比差异 | Read |
-| 5. 报告 | Read 模板 + 填充 → Write 报告文件 | Read, Write |
+| 4. 回归（仅 --golden） | Read 新生成 + 黄金参考 → 对比差异 | Read |
+| 5. 报告 | Read 模板 + 填充 → Write 报告到 `output/{skill-name}/{DATETIME}/` | Read, Write, Bash |
