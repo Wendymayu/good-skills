@@ -1,6 +1,6 @@
 ---
 name: evaluate-skill
-description: Use when the user asks to "evaluate", "评估", "验证", "质量检查" a skill's output quality. Evaluates any good-skills skill using SKILL.md as rubric with structural assertions + LLM-as-Judge compliance scoring. Supports single-case, batch, and run-then-evaluate modes.
+description: Use when the user asks to "evaluate", "评估", "验证", "质量检查" a skill's output quality. Evaluates text/markdown-output skills using SKILL.md as rubric with structural assertions + LLM-as-Judge compliance scoring. Supports single-case, batch, and run-then-evaluate modes. Note: visual/binary formats (e.g. PPT) are out of scope — use a dedicated evaluator (e.g. evaluate-slides); pure conversational skills (no file output) are not applicable.
 allowed-tools: Read, Write, Glob, Grep, WebSearch, WebFetch, TodoWrite, Skill, Bash
 argument-hint: "[skill-name] [--input <路径>] [--run <skill参数>] [--golden <路径>] [--verbose]"
 ---
