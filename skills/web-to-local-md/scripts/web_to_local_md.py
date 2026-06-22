@@ -498,6 +498,32 @@ def clean_html_artifacts(markdown_text):
     # \*\*bold\*\* → **bold**
     markdown_text = re.sub(r'\\\*\\\*([^*]+?)\\\*\\\*', r'**\1**', markdown_text)
 
+    # Strip trailing conference/marketing promo blocks, e.g. InfoQ's
+    # 【会议推荐】 / 【**会议推荐**】 AICon ... 报名中 ... 优惠 ... 门票.
+    # Remove from a "【…推荐】" marker line through the next heading or EOF,
+    # but only if the block also contains promo keywords — this guard prevents
+    # stripping a legitimate "相关推荐" article list that has no signup/price
+    # language. Image filenames/refs are left as-is (hash names are fine).
+    promo_marker = re.compile(r'【\s*\**\s*(?:会议|活动|课程|直播|相关)推荐\s*\**\s*】')
+    promo_kw = re.compile(r'报名|优惠|门票|折扣|限时|立即注册|大会火热|票务|早鸟|扫码')
+    _lines = markdown_text.split('\n')
+    _kept = []
+    _i = 0
+    while _i < len(_lines):
+        if promo_marker.search(_lines[_i]):
+            # Collect the block from the marker to the next heading or EOF
+            _block = []
+            _j = _i + 1
+            while _j < len(_lines) and not _lines[_j].lstrip().startswith('#'):
+                _block.append(_lines[_j])
+                _j += 1
+            if promo_kw.search('\n'.join(_block)):
+                _i = _j  # skip marker line + promo block
+                continue
+        _kept.append(_lines[_i])
+        _i += 1
+    markdown_text = '\n'.join(_kept)
+
     return markdown_text
 
 
