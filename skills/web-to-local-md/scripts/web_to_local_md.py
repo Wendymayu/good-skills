@@ -122,6 +122,40 @@ def strip_frontmatter(content):
     return content
 
 
+def parse_date_string(text):
+    """Parse a date from text, returning YYYY-MM-DD or None.
+
+    Handles many formats so pages that expose only a month-name or
+    Chinese date (e.g. Alibaba Cloud's "更新时间：Feb 11, 2025") are covered:
+      - 2024-11-20, 2024/11/20, 2024.11.20
+      - Feb 11, 2025  /  February 11 2025
+      - 11 Feb 2025  /  11-Feb-2025
+      - 2024年11月20日
+    """
+    if not text:
+        return None
+    months = {'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04',
+              'may': '05', 'jun': '06', 'jul': '07', 'aug': '08',
+              'sep': '09', 'oct': '10', 'nov': '11', 'dec': '12'}
+    # Numeric: YYYY-MM-DD / YYYY/MM/DD / YYYY.MM.DD
+    m = re.search(r'(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})', text)
+    if m:
+        return f"{m.group(1)}-{int(m.group(2)):02d}-{int(m.group(3)):02d}"
+    # Month name first: Feb 11, 2025 / February 11 2025
+    m = re.search(r'(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+(\d{1,2}),?\s+(\d{4})', text, re.I)
+    if m:
+        return f"{m.group(3)}-{months[m.group(1).lower()]}-{int(m.group(2)):02d}"
+    # Day first: 11 Feb 2025 / 11-Feb-2025
+    m = re.search(r'(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?,?\s+(\d{4})', text, re.I)
+    if m:
+        return f"{m.group(3)}-{months[m.group(2).lower()]}-{int(m.group(1)):02d}"
+    # Chinese: 2024年11月20日
+    m = re.search(r'(\d{4})年(\d{1,2})月(\d{1,2})日', text)
+    if m:
+        return f"{m.group(1)}-{int(m.group(2)):02d}-{int(m.group(3)):02d}"
+    return None
+
+
 def extract_page_metadata(html):
     """Extract page title and publication date from HTML before noise stripping.
 
@@ -161,46 +195,41 @@ def extract_page_metadata(html):
 
     # ── Date extraction ──
     date_str = None
-    date_pattern = r'(\d{4}[-/.]\d{1,2}[-/.]\d{1,2})'
 
-    # Priority 1: <meta property="article:published_time">
-    meta_date = soup.find('meta', attrs={'property': 'article:published_time'})
-    if meta_date and meta_date.get('content'):
-        m = re.search(date_pattern, meta_date['content'])
-        if m:
-            date_str = m.group(1).replace('/', '-').replace('.', '-')
-
-    # Priority 2: <meta name="date"> or <meta name="pubdate">
+    # Priority 1: <meta property="article:published_time"> / article:modified_time / og:updated_time
     if not date_str:
-        for meta_name in ('date', 'pubdate', 'publish-date', 'article:date'):
+        for prop in ('article:published_time', 'article:modified_time', 'og:updated_time'):
+            meta_date = soup.find('meta', attrs={'property': prop})
+            if meta_date and meta_date.get('content'):
+                date_str = parse_date_string(meta_date['content'])
+                if date_str:
+                    break
+
+    # Priority 2: <meta name="date"> / "pubdate" / "publish-date" / "article:date"
+    if not date_str:
+        for meta_name in ('date', 'pubdate', 'publish-date', 'article:date', 'og:updated_time'):
             meta = soup.find('meta', attrs={'name': meta_name})
             if meta and meta.get('content'):
-                m = re.search(date_pattern, meta['content'])
-                if m:
-                    date_str = m.group(1).replace('/', '-').replace('.', '-')
+                date_str = parse_date_string(meta['content'])
+                if date_str:
                     break
 
     # Priority 3: <time datetime="...">
     if not date_str:
         time_tag = soup.find('time', attrs={'datetime': True})
         if time_tag:
-            m = re.search(date_pattern, time_tag['datetime'])
-            if m:
-                date_str = m.group(1).replace('/', '-').replace('.', '-')
-            else:
-                m = re.search(date_pattern, time_tag.get_text(strip=True))
-                if m:
-                    date_str = m.group(1).replace('/', '-').replace('.', '-')
+            date_str = parse_date_string(time_tag['datetime'])
+            if not date_str:
+                date_str = parse_date_string(time_tag.get_text(strip=True))
 
     # Priority 4: <time> without datetime attribute (text contains date)
     if not date_str:
         for time_tag in soup.find_all('time'):
-            m = re.search(date_pattern, time_tag.get_text(strip=True))
-            if m:
-                date_str = m.group(1).replace('/', '-').replace('.', '-')
+            date_str = parse_date_string(time_tag.get_text(strip=True))
+            if date_str:
                 break
 
-    # Priority 5: Common date class names (expanded list)
+    # Priority 5: Common date class names (incl. Alibaba Cloud's "doc-status")
     date_classes = [
         'post-date', 'pub-date', 'article-date', 'date',
         'post-meta', 'article-meta', 'entry-date',
@@ -210,33 +239,35 @@ def extract_page_metadata(html):
         'last-updated', 'modify-date', 'created-at',
         'published-at', 'post-created', 'post-modified',
         'date-published', 'date-posted', 'date-updated',
+        # Cloud-doc / CMS date containers
+        'doc-status', 'update-time', 'updatetime', 'doc-meta',
+        'article-update', 'last-modified', 'modified-time',
     ]
     if not date_str:
         for cls in date_classes:
             el = soup.find(class_=cls)
             if el:
-                m = re.search(date_pattern, el.get_text(strip=True))
-                if m:
-                    date_str = m.group(1).replace('/', '-').replace('.', '-')
+                date_str = parse_date_string(el.get_text(' ', strip=True))
+                if date_str:
                     break
 
     # Priority 6: data-date attribute on any element
     if not date_str:
         for el in soup.find_all(attrs={'data-date': True}):
-            m = re.search(date_pattern, el['data-date'])
-            if m:
-                date_str = m.group(1).replace('/', '-').replace('.', '-')
+            date_str = parse_date_string(el['data-date'])
+            if date_str:
                 break
 
-    # Priority 7: Any visible date text near page top (scan first 20 text nodes)
+    # Priority 7: Any visible date text near page top (short text nodes).
+    # parse_date_string handles month-name & Chinese formats, so this catches
+    # "更新时间：Feb 11, 2025" inside a <div class="doc-status"> even if the
+    # class name wasn't in the list above.
     if not date_str:
-        for el in soup.find_all(['span', 'small', 'p', 'div']):
-            text = el.get_text(strip=True)
-            # Only consider short text nodes that look like dates
-            if len(text) < 50:
-                m = re.search(date_pattern, text)
-                if m:
-                    date_str = m.group(1).replace('/', '-').replace('.', '-')
+        for el in soup.find_all(['span', 'small', 'p', 'div', 'time']):
+            text = el.get_text(' ', strip=True)
+            if 0 < len(text) < 60:
+                date_str = parse_date_string(text)
+                if date_str:
                     break
 
     return (title, date_str)

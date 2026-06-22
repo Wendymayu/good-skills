@@ -110,10 +110,12 @@ output/
 **Root cause**: No date extraction step existed in the pipeline. SKILL.md documented the requirement but the code didn't implement it.
 
 **Solution**: `extract_page_metadata()` searches for dates in priority order:
-1. `<meta property="article:published_time">`
+1. `<meta property="article:published_time">` (also `article:modified_time`, `og:updated_time`)
 2. `<time datetime="...">` attribute or text
-3. Common date class names: `.post-date`, `.pub-date`, `.article-date`, `.date`, `.post-meta`, `.entry-date`, etc.
-4. `<small>`/`<span>` elements containing YYYY-MM-DD patterns
+3. Common date class names: `.post-date`, `.pub-date`, `.article-date`, `.date`, `.post-meta`, `.entry-date`, `.doc-status` (Alibaba Cloud), `.update-time`, etc.
+4. `data-date` attr, then any short visible date text node
+
+`parse_date_string()` normalizes many formats to `YYYY-MM-DD`: numeric (`2024-11-20` / `2024/11/20` / `2024.11.20`), month-name (`Feb 11, 2025` / `11 Feb 2025`), and Chinese (`2024年11月20日`). This recovers dates that pages expose only as "更新时间：Feb 11, 2025".
 
 `inject_metadata()` adds `<small style="color:gray">YYYY-MM-DD</small>` on the line immediately **below** the H1 title (separated by a blank line) if no date marker exists in the first 12 lines. The date is **never** placed above the H1: if an H1 already exists, the date is inserted right after it rather than prepended. Only the date is added — no author, category, or other metadata.
 
