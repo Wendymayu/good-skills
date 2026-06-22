@@ -137,7 +137,7 @@ def test_fetch_url_404():
 def test_html_to_markdown_basic():
     """Convert simple HTML to Markdown."""
     html = '<html><body><article><h1>Title</h1><p>' + LONG_TEXT + '</p><p>' + EXTRA_TEXT + '</p><ul><li>Item 1</li><li>Item 2</li></ul></article></body></html>'
-    md, title, date_str = html_to_markdown(html)
+    md, title, date_str, nested_imgs = html_to_markdown(html)
     assert md is not None
     assert '# Title' in md
     assert 'Item 1' in md
@@ -145,7 +145,7 @@ def test_html_to_markdown_basic():
 def test_html_to_markdown_with_code():
     """Convert HTML with code blocks to Markdown."""
     html = '<html><body><article><p>Example code follows:</p><pre><code>print("hello world")</code></pre><p>' + LONG_TEXT + '</p></article></body></html>'
-    md, title, date_str = html_to_markdown(html)
+    md, title, date_str, nested_imgs = html_to_markdown(html)
     assert md is not None
     assert '```' in md
     assert 'print' in md
@@ -153,18 +153,18 @@ def test_html_to_markdown_with_code():
 def test_html_to_markdown_with_links():
     """Convert HTML with links to Markdown."""
     html = '<html><body><article><p>Read the <a href="https://example.com">docs</a> for details.</p><p>' + LONG_TEXT + '</p></article></body></html>'
-    md, title, date_str = html_to_markdown(html)
+    md, title, date_str, nested_imgs = html_to_markdown(html)
     assert md is not None
     assert '[docs](https://example.com)' in md
 
 def test_html_to_markdown_empty():
-    """Empty HTML should return (None, None, None)."""
-    md, title, date_str = html_to_markdown('')
+    """Empty HTML should return (None, None, None, set())."""
+    md, title, date_str, nested_imgs = html_to_markdown('')
     assert md is None
 
 def test_html_to_markdown_short():
-    """Very short HTML should return (None, None, None)."""
-    md, title, date_str = html_to_markdown('<p>Hi</p>')
+    """Very short HTML should return (None, None, None, set())."""
+    md, title, date_str, nested_imgs = html_to_markdown('<p>Hi</p>')
     assert md is None
 
 

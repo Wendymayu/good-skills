@@ -166,7 +166,17 @@ def extract_page_metadata(html):
         if m:
             date_str = m.group(1).replace('/', '-').replace('.', '-')
 
-    # Priority 2: <time datetime="...">
+    # Priority 2: <meta name="date"> or <meta name="pubdate">
+    if not date_str:
+        for meta_name in ('date', 'pubdate', 'publish-date', 'article:date'):
+            meta = soup.find('meta', attrs={'name': meta_name})
+            if meta and meta.get('content'):
+                m = re.search(date_pattern, meta['content'])
+                if m:
+                    date_str = m.group(1).replace('/', '-').replace('.', '-')
+                    break
+
+    # Priority 3: <time datetime="...">
     if not date_str:
         time_tag = soup.find('time', attrs={'datetime': True})
         if time_tag:
@@ -178,15 +188,49 @@ def extract_page_metadata(html):
                 if m:
                     date_str = m.group(1).replace('/', '-').replace('.', '-')
 
-    # Priority 3: Common date class names
-    date_classes = ['post-date', 'pub-date', 'article-date', 'date',
-                    'post-meta', 'article-meta', 'entry-date',
-                    'publish-date', 'pubtime', 'post-time']
+    # Priority 4: <time> without datetime attribute (text contains date)
+    if not date_str:
+        for time_tag in soup.find_all('time'):
+            m = re.search(date_pattern, time_tag.get_text(strip=True))
+            if m:
+                date_str = m.group(1).replace('/', '-').replace('.', '-')
+                break
+
+    # Priority 5: Common date class names (expanded list)
+    date_classes = [
+        'post-date', 'pub-date', 'article-date', 'date',
+        'post-meta', 'article-meta', 'entry-date',
+        'publish-date', 'pubtime', 'post-time',
+        'pubdate', 'post-publish-date', 'meta-date',
+        'updated', 'post-updated', 'article-updated',
+        'last-updated', 'modify-date', 'created-at',
+        'published-at', 'post-created', 'post-modified',
+        'date-published', 'date-posted', 'date-updated',
+    ]
     if not date_str:
         for cls in date_classes:
             el = soup.find(class_=cls)
             if el:
                 m = re.search(date_pattern, el.get_text(strip=True))
+                if m:
+                    date_str = m.group(1).replace('/', '-').replace('.', '-')
+                    break
+
+    # Priority 6: data-date attribute on any element
+    if not date_str:
+        for el in soup.find_all(attrs={'data-date': True}):
+            m = re.search(date_pattern, el['data-date'])
+            if m:
+                date_str = m.group(1).replace('/', '-').replace('.', '-')
+                break
+
+    # Priority 7: Any visible date text near page top (scan first 20 text nodes)
+    if not date_str:
+        for el in soup.find_all(['span', 'small', 'p', 'div']):
+            text = el.get_text(strip=True)
+            # Only consider short text nodes that look like dates
+            if len(text) < 50:
+                m = re.search(date_pattern, text)
                 if m:
                     date_str = m.group(1).replace('/', '-').replace('.', '-')
                     break
@@ -197,8 +241,10 @@ def extract_page_metadata(html):
 def inject_metadata(markdown_text, title, date_str):
     """Inject H1 title and <small> publication date into markdown if missing.
 
+    Order: # H1 title first, then <small> date below it.
     If the markdown already has a # H1 line, skip title injection.
     If it already has a <small> date line, skip date injection.
+    Date is NEVER placed before H1 — if no H1 and no title, skip date too.
     """
     lines = markdown_text.split('\n')
 
@@ -209,9 +255,13 @@ def inject_metadata(markdown_text, title, date_str):
     if title and not has_h1:
         prefix_lines.append(f'# {title}')
         prefix_lines.append('')
+    # Only inject date if we have an H1 (either existing or newly injected)
     if date_str and not has_date:
-        prefix_lines.append(f'<small style="color:gray">{date_str}</small>')
-        prefix_lines.append('')
+        # Ensure there's an H1 before injecting date
+        will_have_h1 = has_h1 or (title and not has_h1)
+        if will_have_h1:
+            prefix_lines.append(f'<small style="color:gray">{date_str}</small>')
+            prefix_lines.append('')
 
     if prefix_lines:
         return '\n'.join(prefix_lines + lines)
@@ -398,8 +448,8 @@ def html_to_markdown(html):
     Pipeline: extract_main → strip_noise → unwrap_anchor_headers → md_conv
               → clean_html_artifacts → inject_metadata → whitespace cleanup
 
-    Returns (markdown_text, title, date_str) tuple on success,
-    (None, None, None) if content is too short/empty.
+    Returns (markdown_text, title, date_str, nested_images) tuple on success,
+    (None, None, None, set()) if content is too short/empty.
     """
     from markdownify import markdownify as md_conv
 
@@ -409,7 +459,11 @@ def html_to_markdown(html):
     # Step 1: Extract main content
     content_html = extract_main_content(html)
     if content_html is None:
-        return (None, None, None)
+        return (None, None, None, set())
+
+    # Step 1a: Extract ALL image src URLs from content HTML (before noise stripping)
+    # This catches deeply nested images (e.g. WordPress <table><td><figure><img>)
+    nested_images = extract_images_from_html(content_html)
 
     # Step 2: Strip noise
     clean_html = strip_noise(content_html)
@@ -433,9 +487,9 @@ def html_to_markdown(html):
     # Step 8: Check minimum content length
     plain_text = re.sub(r'[#*\[\]\(\)!>`\n]', '', markdown_text)
     if len(plain_text.strip()) < 200:
-        return (None, None, None)
+        return (None, None, None, set())
 
-    return (markdown_text.strip(), title, date_str)
+    return (markdown_text.strip(), title, date_str, nested_images)
 
 
 # ─── Image Handling ───
@@ -443,13 +497,20 @@ def html_to_markdown(html):
 def extract_image_urls(content):
     """Extract all remote image URLs from content (Markdown or HTML).
 
-    Handles standard CDN URLs, byteimg signed URLs (with ~ in path),
+    Handles standard CDN URLs, byteimg signed URLs (with ~tplv in path),
     and Next.js /_next/image proxy URLs with encoded nested URLs.
     """
     urls = set()
     # Standard CDN URLs — expanded with .awebp and ~ in path/filename
     pattern = r'https://[a-zA-Z0-9._/~-]+/[a-zA-Z0-9._~-]+\.(?:png|jpg|jpeg|gif|svg|webp|avif|awebp)(?:\?[a-zA-Z0-9=%&_.+-]*)?'
     for url in re.findall(pattern, content):
+        urls.add(url)
+
+    # Byteimg signed URLs: xxx~tplv-xxx.awebp?x-expires=...&x-signature=...
+    # The ~tplv suffix makes the filename part longer than [a-zA-Z0-9._~-]+ can handle
+    # because it includes URL-encoded segments. Use a broader pattern.
+    byteimg_pattern = r'https://[a-zA-Z0-9._/~-]+/[a-zA-Z0-9._~%-]+\.(?:png|jpg|jpeg|gif|svg|webp|avif|awebp)(?:~[a-zA-Z0-9._%-]+)?(?:\?[a-zA-Z0-9=%&_.+~-]*)?'
+    for url in re.findall(byteimg_pattern, content):
         urls.add(url)
 
     # Next.js /_next/image proxy: decode nested url parameter
@@ -491,12 +552,36 @@ def fix_image_paths(content, subdir):
     """Replace remote image URLs with local relative paths.
 
     Handles standard CDN URLs, byteimg signed URLs, and Next.js proxy URLs.
+    Uses human-readable filenames where possible (strips hash prefix,
+    removes ~tplv suffix, cleans up query params).
     """
     prefix = get_image_prefix(subdir)
 
+    def make_readable_filename(url):
+        """Generate a human-readable filename from an image URL.
+
+        Handles:
+        - Standard URLs: use basename (e.g. 'anthropic-evals-1.png')
+        - Hash-prefixed URLs: strip leading hash (e.g. 'bd42e7b2f-4584x2834.png' → '4584x2834.png')
+        - Byteimg signed URLs: strip ~tplv suffix (e.g. 'xxx~tplv-73owjymdk6.awebp' → 'xxx.awebp')
+        - Query params: stripped (filename = basename only)
+        """
+        raw = os.path.basename(url.split('?')[0])
+        # Strip ~tplv suffix from byteimg filenames
+        tilde_idx = raw.find('~tplv')
+        if tilde_idx > 0:
+            raw = raw[:tilde_idx]
+        # Strip leading hash prefix (common in Next.js CDN): 8+ hex chars followed by -
+        m = re.match(r'^[a-f0-9]{8,}-', raw)
+        if m:
+            raw = raw[len(m.group(0)):]
+        # Clean up remaining % encodings
+        raw = raw.replace('%20', '')
+        return raw
+
     def replace_url(match):
         url = match.group(0)
-        filename = os.path.basename(url.split('?')[0])
+        filename = make_readable_filename(url)
         return prefix + filename
 
     # Replace standard remote image URLs (any domain)
@@ -505,11 +590,22 @@ def fix_image_paths(content, subdir):
         replace_url, content
     )
 
+    # Replace byteimg signed URLs (broader pattern for ~tplv suffix)
+    def replace_byteimg_url(match):
+        url = match.group(0)
+        filename = make_readable_filename(url)
+        return prefix + filename
+
+    content = re.sub(
+        r'https://[a-zA-Z0-9._/~-]+/[a-zA-Z0-9._~%-]+\.(?:png|jpg|jpeg|gif|svg|webp|avif|awebp)(?:~[a-zA-Z0-9._%-]+)?(?:\?[a-zA-Z0-9=%&_.+~-]*)?',
+        replace_byteimg_url, content
+    )
+
     # Replace Next.js /_next/image proxy URLs — decode and get real image URL, then localize
     def replace_next_url(match):
         encoded_url = match.group(1)
         real_url = urllib.parse.unquote(encoded_url)
-        filename = os.path.basename(real_url.split('?')[0])
+        filename = make_readable_filename(real_url)
         return prefix + filename
 
     content = re.sub(
@@ -534,6 +630,7 @@ def fill_image_alt_text(content):
     - ![](local_path) → ![filename-based-text](local_path)
     - ![image.png](local_path) → ![filename-based-text](local_path)
     Does NOT overwrite existing descriptive alt text.
+    Also cleans up alt text that contains URL garbage (tplv, signatures, etc).
     """
     def derive_alt(path):
         """Derive alt text from image filename: strip extension, replace -/_ with spaces."""
@@ -549,7 +646,7 @@ def fill_image_alt_text(content):
 
     # Fill empty alt text: ![](path) → ![derived](path)
     def replace_empty_alt(match):
-        path = match.group(2)
+        path = match.group(1)
         alt = derive_alt(path)
         return f'![{alt}]({path})'
 
@@ -567,7 +664,41 @@ def fill_image_alt_text(content):
 
     content = re.sub(r'!\[([^\]]+)\]\(([^)]+)\)', replace_generic_alt, content)
 
+    # Clean alt text containing URL garbage (tplv, x-signature, hash strings, etc.)
+    # Pattern: ![text-containing-url-gunk](path) → ![clean-derived-text](path)
+    def clean_garbage_alt(match):
+        alt = match.group(1)
+        path = match.group(2)
+        # If alt contains tplv, signature, hash, or URL params → replace with derived
+        if re.search(r'tplv|x-signature|x-expires|[a-f0-9]{16,}|~', alt):
+            new_alt = derive_alt(path)
+            return f'![{new_alt}]({path})'
+        return match.group(0)
+
+    content = re.sub(r'!\[([^\]]+)\]\(([^)]+)\)', clean_garbage_alt, content)
+
     return content
+
+
+def extract_images_from_html(html):
+    """Recursively extract all <img> src URLs from HTML content.
+
+    Handles deeply nested structures like WordPress
+    <table><td><figure><img> where <img> is buried inside
+    multiple container elements. Returns a set of src URLs.
+    """
+    from bs4 import BeautifulSoup
+
+    if not html:
+        return set()
+
+    soup = BeautifulSoup(html, 'html.parser')
+    urls = set()
+    for img in soup.find_all('img'):
+        src = img.get('src') or img.get('data-src') or img.get('data-original')
+        if src and src.startswith('http'):
+            urls.add(src)
+    return urls
 
 
 # ─── Main Pipeline ───
@@ -648,12 +779,13 @@ def main():
         # Fallback B: direct HTML extraction (Strategy B) when no sidebar pages and no GitHub source
         if len(pages) == 0 and not args.github_repo:
             print("  No sidebar pages found. Trying Strategy B: direct HTML extraction...")
-            strategy_b_md, _, _ = html_to_markdown(html)
+            strategy_b_md, _, _, nested_imgs = html_to_markdown(html)
             if strategy_b_md:
                 filename = 'index'
                 md_save_path = os.path.join(output_dir, f"{filename}.md")
                 strategy_b_used = True
                 all_remote_images.update(extract_image_urls(strategy_b_md))
+                all_remote_images.update(nested_imgs)
                 strategy_b_md = fix_image_paths(strategy_b_md, '')
                 strategy_b_md = fill_image_alt_text(strategy_b_md)
                 with open(md_save_path, 'w', encoding='utf-8') as f:
