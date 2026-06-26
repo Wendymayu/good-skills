@@ -524,6 +524,19 @@ def clean_html_artifacts(markdown_text):
         _i += 1
     markdown_text = '\n'.join(_kept)
 
+    # Strip orphaned trailing headings: a heading with no body content after it
+    # (e.g. "## 本篇作者" left behind after author bios were removed as noise).
+    # A document should never end on a heading — headings introduce sections
+    # that have content, so a trailing heading is always leftover noise.
+    _lines = markdown_text.split('\n')
+    while _lines and _lines[-1].strip() == '':
+        _lines.pop()
+    while _lines and re.match(r'^#{1,6}\s+\S', _lines[-1]):
+        _lines.pop()
+        while _lines and _lines[-1].strip() == '':
+            _lines.pop()
+    markdown_text = '\n'.join(_lines)
+
     return markdown_text
 
 
@@ -592,12 +605,47 @@ def convert_image_tables(html):
     return str(soup)
 
 
+def normalize_tables(html):
+    """Promote the first row of <th>-less tables to a real header row.
+
+    Many doc/CMS sites (e.g. Alibaba Cloud) render table headers as
+    <td><b>Header</b></td> instead of <th>. markdownify can't tell that row
+    is a header, so it emits an empty header row + separator + the bold row as
+    data:
+
+        |  |  |          <- empty header
+        | --- | --- |
+        | **Header** |    <- real header, mistreated as data
+
+    clean_html_artifacts() then strips the empty header row, leaving the
+    separator ABOVE the header — a broken table that won't render. Converting
+    the first row's <td> to <th> makes markdownify emit the correct
+    header-then-separator order. Tables that already have <th> are left alone.
+    """
+    from bs4 import BeautifulSoup
+
+    if not html:
+        return html
+    soup = BeautifulSoup(html, 'html.parser')
+    for table in soup.find_all('table'):
+        # Skip tables that already have header cells anywhere
+        if table.find_all('th'):
+            continue
+        first_tr = table.find('tr')
+        if not first_tr:
+            continue
+        for td in first_tr.find_all('td'):
+            td.name = 'th'
+    return str(soup)
+
+
 def html_to_markdown(html):
     """Convert HTML content to Markdown using extract + strip_noise + markdownify.
 
     Pipeline: extract_main → extract_images_from_html → strip_noise
               → enrich_image_alts → convert_image_tables → unwrap_anchor_headers
-              → md_conv → clean_html_artifacts → inject_metadata → whitespace cleanup
+              → normalize_tables → md_conv → clean_html_artifacts
+              → inject_metadata → whitespace cleanup
 
     Returns (markdown_text, title, date_str, nested_images) tuple on success,
     (None, None, None, set()) if content is too short/empty.
@@ -627,6 +675,9 @@ def html_to_markdown(html):
 
     # Step 3: Unwrap anchor-only headers (before markdownify)
     clean_html = unwrap_anchor_headers(clean_html)
+
+    # Step 3a: Promote first row of <th>-less tables to header (before markdownify)
+    clean_html = normalize_tables(clean_html)
 
     # Step 4: Convert to Markdown
     markdown_text = md_conv(clean_html, heading_style="ATX", bullets="-")
@@ -882,6 +933,12 @@ def main():
     # Load page definitions
     strategy_b_used = False
     all_remote_images = set()
+    # html holds the site HTML for metadata extraction; it is only fetched in
+    # discovery mode (the else branch below). In --pages mode it stays None, so
+    # extract_page_metadata() returns (None, None) and inject_metadata is a no-op.
+    html = None
+    total_ok = 0
+    total_fail = 0
     if args.pages:
         with open(args.pages, 'r', encoding='utf-8') as f:
             pages = json.load(f)
@@ -897,7 +954,11 @@ def main():
         section_prefix = args.url.replace('https://', '/').replace('http://', '/').split('?')[0]
         if not section_prefix.endswith('/'):
             section_prefix += '/'
-        base_url = args.url.split('/')[0] + '://' + '/'.join(args.url.split('/')[1:3])
+        # urlparse gives a clean scheme://netloc. The old split('/') approach
+        # produced a malformed 'https:///example.cn' (triple slash) for sidebar
+        # page URLs.
+        parsed = urllib.parse.urlparse(args.url)
+        base_url = f"{parsed.scheme}://{parsed.netloc}"
 
         pages = discover_pages(base_url, section_prefix, html)
         print(f"  Found {len(pages)} pages")
@@ -950,10 +1011,10 @@ def main():
                 print("  Strategy B failed: no meaningful content extracted")
 
 
-    # Step 2: Download source files (only if not already handled by Strategy B)
-    total_ok = 0
-    total_fail = 0
-
+    # Step 2: Download source files (only if not already handled by Strategy B).
+    # total_ok/total_fail are initialized at the top of main(); do NOT reset
+    # total_ok here — Strategy B already set it to 1 on success, and resetting
+    # would wipe that count from the summary.
     if not strategy_b_used and pages:
         print(f"\nStep 2: Downloading {len(pages)} pages...")
 
