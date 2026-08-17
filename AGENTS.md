@@ -46,6 +46,26 @@
 
 **前置条件**：无（纯 Claude 编排，不依赖 Python 评估脚本）
 
+### fix-github-issue（GitHub issue 端到端修复）
+
+从拿到 GitHub issue 到回评论的端到端修复流程。核心原则：永远对着 issue 里的真实证据（磁盘数据 / 日志 / 错误样例 / 截图中的值）复现 bug，不凭文字描述猜合成场景；修完回到同一份证据上验证症状消失，而不只是单测通过。编排 `superpowers:systematic-debugging` + `superpowers:test-driven-development`，不重复其内容。
+
+**调用**：`/good-skills:fix-github-issue <GitHub issue URL 或 #编号>`
+
+**适用场景**：用户给出 GitHub issue 链接或说「修一下这个 issue」；issue 带可复现证据（数据 / 日志 / 错误样例 / 截图）。
+
+**前置条件**：无（`gh` 可选；不可用时用 git 凭证管理器调 REST API 发评论，token 不打印）
+
+### agent-architecture-analysis（Agent 架构分析）
+
+分析现有 / 开源 Agent 项目的架构实现，基于实际代码生成架构分析文档。默认单领域：用户指定 Tool / Memory / Context 之一，只产出该领域的文档；未指定先反问，不默认全跑三个。理解和描述现有架构，不主动提重构方案。三个域各自的维度与问题放在 `domains/{tool,memory,context}.md`，选中域才 Read 对应文件。
+
+**调用**：`/good-skills:agent-architecture-analysis [项目路径] [--scope tool|memory|context]`
+
+**适用场景**：用户说「分析架构 / 架构分析 / 梳理架构」、想理解某 Agent 项目的 Tool / Memory / Context 是怎么实现的；review 一个 Agent 项目的代码架构。
+
+**前置条件**：无（纯分析，读代码 + 生成 Markdown）
+
 1. 创建 `skills/<技能名>/SKILL.md`（含 YAML frontmatter：name、description、allowed-tools）
 2. 添加辅助文件（references/、scripts/）按需
 3. 更新本文件加入新技能描述

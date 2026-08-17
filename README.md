@@ -128,6 +128,57 @@ npm install -g @mermaid-js/mermaid-cli
 
 ---
 
+### 5. fix-github-issue — GitHub issue 端到端修复
+
+**一句话**：从拿到 GitHub issue 到回评论的端到端修复，核心是对着 issue 里的真实证据复现、修完回到同一份证据验证。
+
+**产出物**：issue 下的评论（root cause + 修复点 + 验证）+ 代码修复（含失败测试）。
+
+**参数**：
+
+| 参数 | 含义 | 默认值 | 示例 |
+|------|------|--------|------|
+| `<issue URL 或 #编号>`（位置参数） | **必填**。要修的 GitHub issue | 无（不传则报错） | `https://github.com/owner/repo/issues/5`、`#5` |
+
+**5 步工作流**：
+1. 取 issue（标题 + 正文 + 评论 + 截图，逐字读）
+2. 按真实证据复现（数据 / 日志 / 错误样例，不靠假设）
+3. systematic-debugging 根因 + TDD 写失败测试 → 最小修复
+4. 回到同一份真实证据验证症状消除
+5. 回 issue 评论（root cause + 修复 + 验证）
+
+**适用场景**：用户给 GitHub issue 链接或说「修一下这个 issue」；issue 带可复现证据（数据快照 / 日志 / 错误样例 / 截图）。
+
+**前置条件**：无（`gh` 可选；不可用时用 git 凭证管理器调 REST API 发评论，token 不打印）
+
+---
+
+### 6. agent-architecture-analysis — Agent 架构分析
+
+**一句话**：基于实际代码分析现有 / 开源 Agent 项目的架构，默认单领域——指定 Tool / Memory / Context 之一，只产出该领域文档；未指定先反问。
+
+**产出物**：单领域架构分析 Markdown 文档（概述 / 整体架构 / 核心模块 / 模块职责 / 模块关系 / 数据流 / [所选领域] Architecture / 关键设计 / 架构特点 / 潜在问题 / 待确认），含 Mermaid 架构图。
+
+**参数**：
+
+| 参数 | 含义 | 默认值 | 示例 |
+|------|------|--------|------|
+| `[项目路径]`（位置参数，可选） | 要分析的项目目录 | 当前目录 | `./my-agent` |
+| `--scope tool\|memory\|context` | **指定唯一分析领域** | 无（不传则反问要哪个） | `--scope tool` |
+
+**工作流**：
+1. 确定单领域（`--scope` / 自然语言「工具·内存·上下文」/ 都没有则反问）
+2. Read 对应 `domains/<域>.md` 的维度与问题
+3. 基于实际代码分析（定位入口 → 追踪调用 → 梳理职责 / 数据流）
+4. 按单域模板生成文档，只画所选域相关架构图
+5. 最终检查：是否只产出了指定的那一个领域
+
+**适用场景**：用户说「分析架构 / 架构分析 / 梳理架构」、想理解某 Agent 项目的 Tool / Memory / Context 实现；review 一个 Agent 项目的代码架构。
+
+**前置条件**：无（纯分析，读代码 + 生成 Markdown）
+
+---
+
 ## 安装
 
 ### Claude Code
@@ -170,6 +221,13 @@ Codex CLI 没有插件系统，通过项目级 `AGENTS.md` 文件提供技能描
 /good-skills:evaluate-skill web-to-local-md --input ./downloaded                         # 评估下载输出
 /good-skills:evaluate-skill research-landscape --run "可观测"                             # 先执行再评估
 /good-skills:evaluate-skill web-to-local-md --golden ./golden/web-to-local-md/            # 批量评估
+
+/good-skills:fix-github-issue https://github.com/Wendymayu/twinkle/issues/5               # 修复指定 issue
+/good-skills:fix-github-issue #5                                                          # 用编号（需在仓库内）
+
+/good-skills:agent-architecture-analysis --scope tool ./my-agent  # 只分析 Tool 架构
+/good-skills:agent-architecture-analysis --scope context  # 分析当前项目 Context Engineering
+/good-skills:agent-architecture-analysis  # 没指定领域 → 反问要哪个
 ```
 
 ### 定期扫描
@@ -216,12 +274,20 @@ good-skills/
     │       ├── structural-checks.md    ← 通用结构断言清单
     │       ├── scoring-rubric.md       ← 4 维度评分标准
     │       └── report-template.md      ← 评估报告模板
-    └── web-to-local-md/
-        ├── SKILL.md                    ← 技能定义（编排层）
-        ├── references/
-        │   └── common-issues.md        ← 常见问题与解决方案
-        └── scripts/
-            └── web_to_local_md.py      ← 核心下载/转换脚本
+    ├── web-to-local-md/
+    │   ├── SKILL.md                    ← 技能定义（编排层）
+    │   ├── references/
+    │   │   └── common-issues.md        ← 常见问题与解决方案
+    │   └── scripts/
+    │       └── web_to_local_md.py      ← 核心下载/转换脚本
+    ├── fix-github-issue/
+        └── SKILL.md                    ← 技能定义（编排层）
+    └── agent-architecture-analysis/
+        ├── SKILL.md                    ← 技能定义（编排层，含域索引）
+        └── domains/
+            ├── tool.md                 ← Tool 域维度与问题
+            ├── memory.md               ← Memory 域维度与问题
+            └── context.md              ← Context 域维度与问题
 ```
 
 ## 新增技能

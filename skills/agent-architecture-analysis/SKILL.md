@@ -1,7 +1,8 @@
 ---
-name: agent-architecture-analyzer
-description: 分析 Agent 项目的代码和现有架构，并生成 Tool、Memory、Context Engineering 相关的架构分析文档。适用于分析现有 Agent 项目和开源 Agent 项目的架构实现。
-
+name: agent-architecture-analysis
+description: Use when the user asks to "analyze architecture", "架构分析", "梳理架构" of an existing or open-source Agent project — analyzing ONE of Tool / Memory / Context Engineering from real code. Triggers on: codebase architecture review, understanding how an agent's tools/memory/context are built. Single-domain: user specifies one of tool|memory|context (asks which if unspecified).
+allowed-tools: Read, Glob, Grep, Bash, TodoWrite
+argument-hint: "[项目路径] [--scope tool|memory|context]"
 ---
 
 # 1. 角色与范围
@@ -12,19 +13,25 @@ description: 分析 Agent 项目的代码和现有架构，并生成 Tool、Memo
 
 > 分析当前项目 → 梳理现有架构 → 梳理模块职责 → 梳理调用关系 → 梳理数据流 → 总结架构特征 → 生成架构分析文档。
 
-当前只关注三个领域：
-
-- Tool Architecture
-- Memory Architecture
-- Context Engineering
-
-除非用户明确要求，否则不要主动扩展到其他 Agent 架构领域。
-
 本 Skill 的主要目标是：
 
 > **理解和描述现有架构，而不是提出新的架构方案。**
 
 不要主动提出重构、新增模块或替换当前架构。
+
+## 单领域铁律
+
+> **默认一次只分析并产出一个领域。用户指定 Tool / Memory / Context 之一，只生成该领域的文档；未指定时先反问要分析哪一个，不默认全跑三个。**
+
+如果用户显式要求分析多个领域：提示一次只产一个，或分多次运行；**不合并成一份多领域文档**。
+
+当前只支持三个领域，各自一个域专用参考文件：
+
+- Tool Architecture → `domains/tool.md`
+- Memory Architecture → `domains/memory.md`
+- Context Engineering → `domains/context.md`
+
+除非用户明确要求，否则不要主动扩展到其他 Agent 架构领域。
 
 ---
 
@@ -40,7 +47,7 @@ description: 分析 Agent 项目的代码和现有架构，并生成 Tool、Memo
 4. 梳理模块职责；
 5. 梳理关键数据结构；
 6. 梳理数据流；
-7. 分析 Tool / Memory / Context；
+7. 按选中领域 Read `domains/<域>.md`，依其维度分析（见 §3）；
 8. 总结整体架构和关键设计。
 
 ## 2.1 梳理当前架构
@@ -82,126 +89,31 @@ description: 分析 Agent 项目的代码和现有架构，并生成 Tool、Memo
 
 ---
 
-# 3. Tool Architecture
+# 3. 确定分析范围（step 0）
 
-当用户要求分析 Tool 时，重点分析当前项目中的 Tool 相关实现。
+在进入 §2 的代码分析之前，先确定本次要分析的**唯一领域**。
 
-重点关注：
+从三处确定：
 
-- Tool Definition
-- Tool Schema
-- Tool Registry
-- Tool Discovery
-- Tool Selection
-- Tool Execution
-- Parameter Validation
-- Permission
-- Timeout
-- Retry
-- Error Handling
-- Tool Result
+1. **显式参数**：`--scope tool|memory|context`
+2. **自然语言线索**：用户说“工具 / tool”→ Tool；“内存 / 记忆 / memory”→ Memory；“上下文 / context”→ Context
+3. **都没有**：**先反问用户要分析哪一个**，不要默认全跑三个
 
-重点回答：
+确定后，**Read 对应的 `domains/<域>.md`**，按该文件的维度和问题分析当前项目。
 
-- Tool 如何定义？
-- Tool 如何注册？
-- Agent / LLM 如何发现 Tool？
-- 谁决定调用哪个 Tool？
-- Tool 如何执行？
-- 参数如何校验？
-- 如何处理执行失败？
-- 如何处理 Timeout / Retry？
-- Tool Result 如何返回？
-- Tool Result 如何进入 Context？
+域索引：
 
-以上列表只是分析维度，不代表当前项目一定存在这些组件。如果无法从代码确认某个机制，不要将其作为事实描述；可以标记为“未发现”或“无法确认”。
+| 领域 | 文件 | 触发词 |
+|---|---|---|
+| Tool Architecture | `domains/tool.md` | 工具 / tool / `--scope tool` |
+| Memory Architecture | `domains/memory.md` | 内存 / 记忆 / memory / `--scope memory` |
+| Context Engineering | `domains/context.md` | 上下文 / context / `--scope context` |
+
+只有被选中的那个领域进入本次范围。其余两个领域**不分析、不生成章节**。
 
 ---
 
-# 4. Memory Architecture
-
-当用户要求分析 Memory 时，重点分析当前项目中的 Memory 相关实现。
-
-重点关注：
-
-- Memory Extraction
-- Memory Write
-- Memory Store
-- Memory Retrieval
-- Memory Ranking
-- Memory Update
-- Memory Merge
-- Memory Conflict
-- Memory Lifecycle
-- Memory → Context
-
-重点回答：
-
-- 什么信息会成为 Memory？
-- Memory 如何产生？
-- Memory 如何写入？
-- Memory 存在哪里？
-- Memory 如何检索？
-- Memory 如何排序？
-- 如何处理重复？
-- 如何处理更新？
-- 如何处理 Merge？
-- 如何处理 Conflict？
-- Memory 如何进入 Context？
-- 谁负责 Memory Lifecycle？
-
-如果当前项目已经存在 Memory 实现：
-
-1. 解释 Memory 的产生方式；
-2. 解释 Memory 的存储方式；
-3. 解释 Memory 的检索方式；
-4. 解释 Memory 如何进入 Agent Context；
-5. 分析 Memory 的生命周期。
-
-以上列表只是分析维度，不代表当前项目一定存在这些组件。如果无法从代码确认某个机制，不要将其作为事实描述；可以标记为“未发现”或“无法确认”。
-
----
-
-# 5. Context Engineering
-
-当用户要求分析 Context 时，重点分析当前项目中的 Context 来源和组装过程。
-
-重点关注：
-
-- System Prompt
-- Developer Instructions
-- Skill Definitions
-- Tool Definitions
-- Conversation History
-- Memory
-- Retrieved Information
-- Tool Results
-- Runtime Information
-- Context Assembly
-- Context Compression
-- Context Pruning
-- Context Budget
-- Context Lifecycle
-
-重点回答：
-
-- Context 有哪些来源？
-- 这些信息如何进入 Context？
-- Context 如何组装？
-- 不同信息如何组织？
-- Memory 如何进入 Context？
-- Tool Result 如何进入 Context？
-- Context 太长时如何处理？
-- 哪些信息会被压缩？
-- 哪些信息会被裁剪？
-
-重点关注实际代码中的 Context 构建过程，而不是只描述理论上的 Context Engineering。
-
-以上列表只是分析维度，不代表当前项目一定存在这些组件。如果无法从代码确认某个机制，不要将其作为事实描述；可以标记为“未发现”或“无法确认”。
-
----
-
-# 6. 架构图
+# 4. 架构图
 
 对于重要的架构关系和数据流，优先使用 Mermaid。
 
@@ -227,18 +139,16 @@ flowchart LR
 
 不要为了画图而虚构不存在的组件、依赖或数据流。
 
-只有能够帮助理解架构时才使用图。
+**只画与所选领域相关的图**；没有帮助理解架构的图就不画。
 
 ---
 
-# 7. 架构文档输出
+# 5. 架构文档输出（单域模板）
 
-以下为默认结构，不要求所有章节都存在。
-
-根据实际项目和分析范围增加或删除章节。
+默认只产出用户选中的那一个领域的文档。以下为单域默认结构，不要求所有章节都存在，按实际项目增删。
 
 ```markdown
-# [项目 / 模块名称] 架构分析
+# [项目 / 模块名称] 架构分析 — [Tool|Memory|Context]
 
 ## 1. 概述
 
@@ -252,37 +162,28 @@ flowchart LR
 
 ## 6. 数据流
 
-## 7. Tool Architecture
+## 7. [所选领域] Architecture
 
-## 8. Memory Architecture
+## 8. 关键设计说明
 
-## 9. Context Engineering
+## 9. 架构特点
 
-## 10. 关键设计说明
+## 10. 潜在问题
 
-## 11. 架构特点
-
-## 12. 潜在问题
-
-## 13. 待确认问题
+## 11. 待确认问题
 ```
 
-不需要分析的领域可以删除。
-
-例如：
-
-- 用户只要求分析 Tool，则不需要生成 Memory 和 Context 章节。
-- 用户只要求分析 Memory，则重点生成 Memory 相关内容。
-- 用户要求分析整个 Agent，则根据项目实际情况覆盖 Tool、Memory、Context。
+`## 7. [所选领域] Architecture` 一节的内容，由你 Read 的 `domains/<域>.md` 的维度和问题驱动——**只填选中域那一节，另外两个域的章节不生成**。
 
 不要为了填模板而增加没有实际内容的章节。
 
 ---
 
-# 8. 最终检查
+# 6. 最终检查
 
 生成文档之前确认：
 
+- [ ] 是否只产出了用户指定的那一个领域，没有默认全跑三个？
 - [ ] 是否分析了当前项目代码？
 - [ ] 是否找到了与当前问题相关的代码？
 - [ ] 是否描述了当前整体架构？
@@ -290,15 +191,14 @@ flowchart LR
 - [ ] 是否明确了模块职责？
 - [ ] 是否描述了模块之间的关系？
 - [ ] 是否描述了关键数据流？
-- [ ] 是否分析了相关的 Tool / Memory / Context？
+- [ ] 是否 Read 了选中域的 `domains/<域>.md` 并按其维度分析？
 - [ ] 是否说明了关键架构设计？
 - [ ] 是否区分了代码事实和分析判断？
 - [ ] 是否避免根据理论架构臆造不存在的组件？
-- [ ] 是否使用了必要的架构图？
+- [ ] 是否使用了必要的架构图（只画所选域相关）？
 - [ ] 是否避免泛泛而谈？
 - [ ] 是否避免主动提出未经用户要求的重构方案？
 
 最终目标：
 
-> **基于实际代码，把当前项目的架构讲清楚，让读者理解它由什么组成、各模块负责什么、模块如何协作、数据如何流动，以及关键设计是如何实现的。**
-
+> **基于实际代码，把当前项目中用户指定领域的架构讲清楚，让读者理解它由什么组成、各模块负责什么、模块如何协作、数据如何流动，以及关键设计是如何实现的。**
