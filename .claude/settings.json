@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python -c \"import py_compile; py_compile.compile\\('research-observe/skills/research-observe/scripts/search_semantic_scholar.py', doraise=True\\); print\\('OK'\\)\")"
+      "Bash(python -c \"import py_compile; py_compile.compile\\('research-observe/skills/research-observe/scripts/search_semantic_scholar.py', doraise=True\\); print\\('OK'\\)\")",
+      "Bash(claude --version)"
     ]
   }
 }
