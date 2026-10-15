@@ -66,6 +66,16 @@
 
 **前置条件**：无（纯分析，读代码 + 生成 Markdown）
 
+### translate-pdf-paper（PDF 论文翻译）
+
+把长 PDF（学术论文、综述、技术报告）翻译成单一 Markdown 文件，保留所有图并重建表格。核心原则：分解、绝不内联翻译——主 agent 跑脚本抽取文本 + 渲染图区域为裁剪 PNG + 按句边界分块，然后派发并行翻译子代理各写各的文件、只回一行确认，最后拼装 + 清理，翻译正文从不进入主上下文。
+
+**调用**：`/good-skills:translate-pdf-paper <input.pdf> [--lang zh] [--chunks N] [--output-dir DIR]`
+
+**适用场景**：用户说「把这篇论文翻译成中文」/「translate this PDF to Chinese」且想保留图片；源是多页 PDF（≥15 页 / ~60k 字符）。
+
+**前置条件**：Python 3 + `pip install PyMuPDF`（导入名 `pymupdf`）
+
 1. 创建 `skills/<技能名>/SKILL.md`（含 YAML frontmatter：name、description、allowed-tools）
 2. 添加辅助文件（references/、scripts/）按需
 3. 更新本文件加入新技能描述

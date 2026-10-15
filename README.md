@@ -179,6 +179,42 @@ npm install -g @mermaid-js/mermaid-cli
 
 ---
 
+### 7. translate-pdf-paper — PDF 论文翻译
+
+**一句话**：把长 PDF（学术论文、综述、技术报告）翻译成单一 Markdown 文件，保留所有图并重建表格，不撑爆上下文窗口。
+
+**产出物**：单一翻译后 Markdown（含 `![](images/figureN.png)` 图引用 + Markdown 重建的表格），图以裁剪 PNG 保留。
+
+**参数**：
+
+| 参数 | 含义 | 默认值 | 示例 |
+|------|------|--------|------|
+| `<input.pdf>`（位置参数） | **必填**。要翻译的 PDF 文件 | 无（不传则报错） | `paper.pdf` |
+| `--lang zh\|en` | 目标语言 | `zh` | `--lang zh` |
+| `--chunks N` | 分块数量 | 按 ~40k 字符/块 建议值 | `--chunks 8` |
+| `--output-dir DIR` | 输出目录 | 当前目录 | `--output-dir ./translated` |
+
+**8 步工作流**：
+1. 分析（页数、字符数、图表 caption 与页码）
+2. 抽取文本（带 PAGE 标记）
+3. 渲染图区域为裁剪 PNG（3× 缩放）
+4. 按句边界分块（句子不跨块）
+5. 派发 N 个并行翻译子代理（各写文件、只回一行确认）
+6. 拼装 header + 各块
+7. 清理（单一参考文献标题、去编号前缀、折叠空行）
+8. 抽查（图引用数=图数、表 caption 数=表数、参考文献单一标题、摘要完整）
+
+**核心原则**：分解、绝不内联翻译——长文内联翻译会在文档中途质量崩溃并耗尽上下文；分块 + 并行子代理写文件，翻译正文从不进入主上下文。
+
+**适用场景**：用户说「把这篇论文翻译成中文」「translate PDF to Chinese」且想保留图片；源是多页 PDF（≥15 页 / ~60k 字符）。
+
+**前置条件**：
+```bash
+pip install PyMuPDF
+```
+
+---
+
 ## 安装
 
 ### Claude Code
@@ -228,6 +264,8 @@ Codex CLI 没有插件系统，通过项目级 `AGENTS.md` 文件提供技能描
 /good-skills:agent-architecture-analysis --scope tool ./my-agent  # 只分析 Tool 架构
 /good-skills:agent-architecture-analysis --scope context  # 分析当前项目 Context Engineering
 /good-skills:agent-architecture-analysis  # 没指定领域 → 反问要哪个
+
+/good-skills:translate-pdf-paper paper.pdf --lang zh       # 翻译 PDF 论文为中文 Markdown（保留图 + 重建表）
 ```
 
 ### 定期扫描
@@ -281,13 +319,19 @@ good-skills/
     │   └── scripts/
     │       └── web_to_local_md.py      ← 核心下载/转换脚本
     ├── fix-github-issue/
-        └── SKILL.md                    ← 技能定义（编排层）
-    └── agent-architecture-analysis/
-        ├── SKILL.md                    ← 技能定义（编排层，含域索引）
-        └── domains/
-            ├── tool.md                 ← Tool 域维度与问题
-            ├── memory.md               ← Memory 域维度与问题
-            └── context.md              ← Context 域维度与问题
+    │   └── SKILL.md                    ← 技能定义（编排层）
+    ├── agent-architecture-analysis/
+    │   ├── SKILL.md                    ← 技能定义（编排层，含域索引）
+    │   └── domains/
+    │       ├── tool.md                 ← Tool 域维度与问题
+    │       ├── memory.md               ← Memory 域维度与问题
+    │       └── context.md              ← Context 域维度与问题
+    └── translate-pdf-paper/
+        ├── SKILL.md                    ← 技能定义（编排层）
+        ├── references/
+        │   └── translation-guidelines.md  ← 分块翻译子代理提示模板
+        └── scripts/
+            └── pdf_tools.py            ← PDF 抽取/分块/拼装脚本
 ```
 
 ## 新增技能

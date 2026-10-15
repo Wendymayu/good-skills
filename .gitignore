@@ -10,5 +10,8 @@ research-landscape-report-*.md
 evaluate-skill-report-*.md
 downloaded/
 
+# Skill execution / validation artifacts (never commit)
+skills/*/_test/
+
 # Data directory (never commit)
 data/
